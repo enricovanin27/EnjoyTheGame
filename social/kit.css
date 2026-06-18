@@ -1,0 +1,127 @@
+/* ============ ENJOY THE GAME — social & merch kit ============ */
+:root{
+  --orange:#FA720E;
+  --orange-ink:#C25405;
+  --red:#DC4937;
+  --sand:#E4C3A2;
+  --sand-soft:#F3E4D2;
+  --teal:#0A4356;
+  --teal-700:#0E3A49;
+  --teal-900:#072A36;
+  --blue:#3E7CA8;
+  --ink:#19150F;
+  --ink-2:#4A453D;
+  --ink-3:#8A8276;
+  --line:#ECE6DC;
+  --paper:#FBF8F3;
+  --display:'Sora',system-ui,sans-serif;
+  --body:'Archivo',system-ui,sans-serif;
+  --mono:'Space Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+
+/* ---------- the brand "D" mark (right-half disc, 4 wedges) ---------- */
+.dmark{
+  position:relative;border-radius:50%;flex:0 0 auto;
+  background:conic-gradient(
+    var(--orange) 0 45deg,
+    var(--red) 45deg 90deg,
+    var(--sand) 90deg 135deg,
+    var(--teal) 135deg 180deg,
+    transparent 180deg 360deg);
+}
+
+/* ---------- shared type helpers ---------- */
+.k-eyebrow{font-family:var(--mono);font-weight:700;letter-spacing:.2em;text-transform:uppercase;line-height:1}
+.k-display{font-family:var(--display);font-weight:800;line-height:.92;letter-spacing:-.025em;margin:0}
+.k-body{font-family:var(--body);line-height:1.45}
+.k-mono{font-family:var(--mono)}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ============ FEED POST (square) ============ */
+.post{width:100%;height:100%;position:relative;overflow:hidden;font-family:var(--body);
+  display:flex;flex-direction:column}
+.post--paper{background:var(--paper);color:var(--ink)}
+.post--teal{background:var(--teal);color:#fff}
+.post--sand{background:var(--sand-soft);color:var(--teal-900)}
+.post-pad{padding:48px 46px;flex:1;display:flex;flex-direction:column;position:relative;z-index:2}
+.post-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.post-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto}
+.post-foot .handle{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em}
+
+/* the little horizontal logo lockup */
+.lockup{display:flex;align-items:center;gap:9px}
+.lockup .lk-mark{width:22px;height:22px}
+.lockup .lk-txt{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.01em;line-height:1}
+
+/* big decorative D in a corner */
+.post-deco{position:absolute;z-index:1;pointer-events:none}
+
+/* tags / chips */
+.k-chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-weight:700;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:7px 13px;border-radius:999px;line-height:1}
+.k-chip--orange{background:var(--orange);color:#fff}
+.k-chip--red{background:var(--red);color:#fff}
+.k-chip--line{border:1.5px solid currentColor}
+.k-chip--solid-ink{background:var(--ink);color:#fff}
+
+/* numbered steps */
+.step{display:flex;gap:16px;align-items:flex-start}
+.step-n{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--display);font-weight:800;font-size:16px;background:var(--orange);color:#fff}
+.step-t{font-family:var(--body);font-weight:700;font-size:18px;line-height:1.25;margin:0}
+.step-s{font-family:var(--body);font-weight:400;font-size:14px;line-height:1.35;color:var(--ink-2);margin:3px 0 0}
+
+/* day-info rows */
+.info-row{display:flex;align-items:baseline;gap:14px;padding:13px 0;border-top:1.5px solid rgba(255,255,255,.16)}
+.info-row .ir-k{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.65;flex:0 0 132px}
+.info-row .ir-v{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.05}
+
+/* ============ STORY (9:16) ============ */
+.story{width:100%;height:100%;position:relative;overflow:hidden;font-family:var(--body);
+  display:flex;flex-direction:column}
+.story--teal{background:var(--teal);color:#fff}
+.story--paper{background:var(--paper);color:var(--ink)}
+.story--orange{background:var(--orange);color:#fff}
+.story-pad{position:absolute;inset:0;padding:110px 56px 150px;display:flex;flex-direction:column;z-index:3}
+/* faux IG chrome so it reads as a real story */
+.ig-top{position:absolute;top:34px;left:24px;right:24px;z-index:5;display:flex;align-items:center;gap:11px}
+.ig-bar{position:absolute;top:24px;left:24px;right:24px;height:3px;border-radius:3px;background:rgba(255,255,255,.32);z-index:5}
+.ig-bar::after{content:"";position:absolute;left:0;top:0;bottom:0;width:38%;border-radius:3px;background:#fff}
+.ig-av{width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:0 0 auto}
+.ig-handle{font-family:var(--mono);font-weight:700;font-size:14px;color:#fff}
+.ig-handle .t{opacity:.6;margin-left:7px;font-weight:400}
+.ig-x{margin-left:auto;font-size:24px;opacity:.85}
+.story.on-light .ig-bar{background:rgba(0,0,0,.18)}
+.story.on-light .ig-av{background:var(--teal)}
+.story.on-light .ig-handle{color:var(--ink)}
+
+/* sticker mockups */
+.sticker{border-radius:18px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.poll{background:#fff;color:var(--ink);overflow:hidden}
+.poll-q{font-family:var(--body);font-weight:800;font-size:21px;text-align:center;padding:20px 18px 16px}
+.poll-opts{display:flex}
+.poll-opt{flex:1;padding:18px 12px;font-family:var(--body);font-weight:700;font-size:18px;text-align:center}
+.poll-opt+ .poll-opt{border-left:2px solid #ECE6DC}
+.countdown-st{background:rgba(255,255,255,.95);color:var(--ink);text-align:center;padding:20px 26px}
+.countdown-lbl{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.countdown-num{font-family:var(--display);font-weight:800;font-size:52px;line-height:1;margin-top:4px;
+  background:linear-gradient(120deg,var(--orange),var(--red));-webkit-background-clip:text;background-clip:text;color:transparent}
+.mention{display:inline-flex;align-items:center;gap:9px;background:#fff;color:var(--ink);border-radius:12px;
+  padding:11px 16px;font-family:var(--mono);font-weight:700;font-size:18px;box-shadow:0 10px 28px rgba(0,0,0,.16)}
+
+/* ============ T-SHIRT board ============ */
+.tee-board{width:100%;height:100%;background:#f4f1ec;font-family:var(--body);position:relative;
+  display:flex;flex-direction:column;padding:44px 48px 40px}
+.tee-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:8px}
+.tee-dir{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;color:var(--ink);line-height:1}
+.tee-sub{font-family:var(--body);font-size:15px;color:var(--ink-2);max-width:520px;line-height:1.4;margin-top:8px}
+.tee-swatch-row{display:flex;align-items:center;gap:10px}
+.tee-swatch{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.12)}
+.tee-color-lbl{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.tee-stage{flex:1;display:flex;align-items:center;justify-content:center;gap:30px}
+.tee-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
+.tee-cap{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.tee-svg-wrap{position:relative}
+.tee-print{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}

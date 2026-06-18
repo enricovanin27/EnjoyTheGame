@@ -1,0 +1,11 @@
+# File di lavoro — non pubblicare
+scraps/
+screenshots/
+uploads/
+dist/
+
+# Schema del database (già applicato su Supabase; non serve online)
+db/
+
+# Sistema
+.DS_Store
