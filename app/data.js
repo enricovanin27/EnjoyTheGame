@@ -214,7 +214,9 @@
       QF.forEach((q,i)=>state.matches.push(mk({phase:'quarti',slot:i,day:'DOM 26 LUG',time:QF_TIMES[i],court:'Campo 1',aId:q[0],bId:q[1]})));
       state.matches.push(mk({phase:'semi',slot:0,day:'DOM 26 LUG',time:'17:00',court:'Campo 1',aId:null,bId:null}));
       state.matches.push(mk({phase:'semi',slot:1,day:'DOM 26 LUG',time:'17:40',court:'Campo 1',aId:null,bId:null}));
+      // slot 0 = finale 3°/4° posto; slot 1 = finale 1°/2° posto
       state.matches.push(mk({phase:'finale',slot:0,day:'DOM 26 LUG',time:'18:30',court:'Campo 1',aId:null,bId:null}));
+      state.matches.push(mk({phase:'finale',slot:1,day:'DOM 26 LUG',time:'19:20',court:'Campo 1',aId:null,bId:null}));
       state.d1win={A:w1('A'),B:w1('B'),C:w1('C'),D:w1('D')};
       state.d2win={E:w2('E'),F:w2('F'),G:w2('G'),H:w2('H')};
       save(); return {ok:true};
@@ -248,7 +250,7 @@
       bracketMatches(){ return {
         quarti: state.matches.filter(m=>m.phase==='quarti').sort((a,b)=>a.slot-b.slot),
         semi: state.matches.filter(m=>m.phase==='semi').sort((a,b)=>a.slot-b.slot),
-        finale: state.matches.filter(m=>m.phase==='finale'),
+        finale: state.matches.filter(m=>m.phase==='finale').sort((a,b)=>a.slot-b.slot),
       };},
       liveMatch(){ return state.matches.find(m=>m.status==='live'); },
       schedule(){ return state.matches.slice().sort((a,b)=> (a.day<b.day?-1:a.day>b.day?1:0) || (a.time<b.time?-1:1)); },
