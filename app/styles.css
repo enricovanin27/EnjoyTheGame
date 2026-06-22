@@ -258,6 +258,106 @@ textarea.control{resize:vertical;min-height:74px}
   .cf-boxes input{font-size:13px;padding:7px 0}
 }
 
+/* ============ DESKTOP / TABLET — stessa grafica mobile, ingrandita ============ */
+@media(min-width:640px){
+  :root{
+    --maxw:720px;
+    --r:18px;
+    --r-lg:26px;
+  }
+
+  /* sfondo leggermente più scuro fuori dalla colonna, così emerge bene */
+  body{ background:#E5DFD6; }
+
+  /* colonna centrata con ombra sottile — effetto "app su desktop" */
+  .app-root{
+    max-width:720px;
+    margin:0 auto;
+    box-shadow:0 0 0 1px rgba(25,21,15,.07), 0 8px 60px rgba(25,21,15,.12);
+  }
+
+  /* ---- tipografia ---- */
+  .h1{ font-size:40px }
+  .h2{ font-size:28px }
+  .h3{ font-size:21px }
+  .eyebrow{ font-size:13px }
+  .lead{ font-size:20px }
+  .small{ font-size:15.5px }
+  .tiny{ font-size:13px }
+
+  /* ---- layout ---- */
+  .screen{ padding:0 30px }
+  .section{ padding:36px 0 }
+  .card{ border-radius:var(--r-lg) }
+  .card-pad{ padding:26px }
+  .grid2{ gap:16px }
+  .grid3{ gap:14px }
+
+  /* ---- topbar ---- */
+  .topbar-in{ padding:16px 26px }
+  .brand{ font-size:19px; gap:12px }
+  .iconbtn{ width:48px; height:48px }
+
+  /* ---- bottoni ---- */
+  .btn{ padding:17px 26px; font-size:16px }
+  .btn-lg{ padding:20px 30px; font-size:18px }
+  .btn-sm{ padding:11px 18px; font-size:14px }
+
+  /* ---- chips / pill ---- */
+  .chip{ font-size:12px; padding:6px 13px }
+
+  /* ---- form ---- */
+  .field{ gap:8px }
+  .label{ font-size:14.5px }
+  .control,input.control,select.control,textarea.control{
+    padding:15px 18px;
+    font-size:16px;
+    border-radius:var(--r);
+  }
+  textarea.control{ min-height:90px }
+  .hint,.field-err{ font-size:13.5px }
+  .seg button{ font-size:15px; padding:12px }
+  .cf-field{ font-size:18px }
+  .code-input{ font-size:30px }
+
+  /* ---- tabelle / classifiche ---- */
+  .tbl{ font-size:15px }
+  .tbl th{ font-size:11.5px; padding:10px 5px }
+  .tbl td{ padding:13px 5px }
+  .rank{ width:26px; height:26px; font-size:12px }
+
+  /* ---- scoreboard ---- */
+  .scorebrd{ padding:28px 26px }
+  .scorebrd .sb-team{ font-size:23px }
+  .sb-score{ font-size:76px }
+
+  /* ---- tabellone (bracket) ---- */
+  .bcol{ min-width:185px }
+  .bteam{ font-size:14px; padding:4px 0 }
+
+  /* ---- tab bar inferiore ---- */
+  .tabbar button{ padding:12px 6px 14px; font-size:12.5px }
+  .tabbar svg{ width:25px; height:25px }
+
+  /* ---- varie ---- */
+  .avatar{ width:50px; height:50px; font-size:18px }
+  .listrow{ padding:18px 20px }
+  .notice{ padding:16px 18px; font-size:15.5px }
+  .toast{ font-size:15px; padding:15px 22px }
+  .codebig{ font-size:52px }
+  .warn-save-t{ font-size:20px }
+  .warn-save-s{ font-size:15.5px }
+  .feebox-amt{ font-size:38px }
+
+  /* ---- utilità gap (proporzionalmente più ampi) ---- */
+  .g10{ gap:13px }
+  .g12{ gap:16px }
+  .g14{ gap:18px }
+  .g16{ gap:20px }
+  .g20{ gap:26px }
+  .g24{ gap:30px }
+}
+
 /* ============ NOI module — faithful reproduction of the paper adhesion form (NOI Paese 2025) ============ */
 .noi-page{background:#fff;color:#000;font-family:'Archivo',Arial,Helvetica,sans-serif;font-size:8px;line-height:1.32;
   width:100%;padding:4px 2px}
