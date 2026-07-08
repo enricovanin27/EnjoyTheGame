@@ -56,10 +56,6 @@ function Home({ go }) {
           <div className="row between" style={{ marginBottom: 12, alignItems: 'flex-end' }}>
             <div className="eyebrow">{full ? 'Iscrizioni chiuse' : 'Iscrizioni aperte'}</div>
           </div>
-          {/* slots bar */}
-          <div style={{ height: 6, borderRadius: 99, background: 'var(--line-2)', overflow: 'hidden', marginBottom: 12 }}>
-            <div style={{ height: '100%', width: teamCount / MAX * 100 + '%', background: full ? 'var(--red)' : 'var(--orange)', borderRadius: 99, transition: 'width .4s' }}></div>
-          </div>
           <div className="row between" style={{ marginBottom: 16, alignItems: 'center' }}>
             <span className="tiny" style={{ color: 'var(--ink-3)' }}>Quota: <b style={{ color: 'var(--ink)' }}>22€ a giocatore</b></span>
             <span className="tiny" style={{ color: 'var(--ink-3)' }}>pagamento via PayPal</span>

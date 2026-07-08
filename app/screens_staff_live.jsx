@@ -2,19 +2,12 @@
 
 function advanceBracket(s,m){
   const winner = (m.scoreA>=m.scoreB)?m.aId:m.bId;
-  const loser  = (m.scoreA>=m.scoreB)?m.bId:m.aId;
   if(m.phase==='quarti'){
-    // SF0 (slot 0): vincente Q0(1A-1H) vs vincente Q2(1C-1F)
-    // SF1 (slot 1): vincente Q1(1B-1G) vs vincente Q3(1D-1E)
-    const semiSlot = (m.slot===0||m.slot===2) ? 0 : 1;
-    const semiSide = (m.slot===0||m.slot===1) ? 'aId' : 'bId';
-    const semi=s.matches.find(x=>x.phase==='semi'&&x.slot===semiSlot);
-    if(semi) semi[semiSide]=winner;
+    const semi=s.matches.find(x=>x.phase==='semi'&&x.slot===Math.floor(m.slot/2));
+    if(semi){ if(m.slot%2===0) semi.aId=winner; else semi.bId=winner; }
   } else if(m.phase==='semi'){
-    const fin  =s.matches.find(x=>x.phase==='finale'&&x.slot===1); // 1°/2° posto
-    const terzo=s.matches.find(x=>x.phase==='finale'&&x.slot===0); // 3°/4° posto
-    if(fin){   if(m.slot===0) fin.aId=winner;   else fin.bId=winner; }
-    if(terzo){ if(m.slot===0) terzo.aId=loser;  else terzo.bId=loser; }
+    const fin=s.matches.find(x=>x.phase==='finale');
+    if(fin){ if(m.slot===0) fin.aId=winner; else fin.bId=winner; }
   }
 }
 
@@ -41,7 +34,7 @@ function StaffLive(){
         <div className="stack g8">
           {startable.slice(0,6).map(m=>(
             <div key={m.id} className="card" style={{padding:'11px 13px',display:'flex',alignItems:'center',gap:10}}>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)'}}>vs</span> {window.ETG.teamName(m.bId)}</div><div className="tiny">{PhaseLabel(m.phase,m.slot)}{m.group?' '+m.group:''} · {m.time} · {m.court}</div></div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)'}}>vs</span> {window.ETG.teamName(m.bId)}</div><div className="tiny">{PhaseLabel(m.phase)}{m.group?' '+m.group:''} · {m.time} · {m.court}</div></div>
               <Btn variant="primary" size="sm" onClick={()=>store.update(st=>{const x=st.matches.find(y=>y.id===m.id);x.status='live';x.scoreA=0;x.scoreB=0;st.live={matchId:x.id,target:x.target||21,timeoutA:false,timeoutB:false,period:x.phase==='quarti'||x.phase==='semi'||x.phase==='finale'?'TEMPO UNICO 15:00':'TEMPO UNICO 10:00'};})}>Avvia</Btn>
             </div>
           ))}
@@ -73,7 +66,7 @@ function StaffLive(){
       <div className="card" style={{padding:'14px 16px',border:'1.5px solid var(--red)'}}>
         <div className="row between" style={{marginBottom:6}}>
           <span className="chip chip-live"><span className="dot pulse"></span> IN DIRETTA</span>
-          <span className="tiny mono">{PhaseLabel(lm.phase,lm.slot)}{lm.group?' '+lm.group:''} · arrivo a {lm.target||21}</span>
+          <span className="tiny mono">{PhaseLabel(lm.phase)}{lm.group?' '+lm.group:''} · arrivo a {lm.target||21}</span>
         </div>
         <div className="row" style={{alignItems:'flex-start',gap:8,marginTop:10}}>
           <TeamCtrl side="a"/>
@@ -113,7 +106,7 @@ function StaffResults(){
                   </div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:700,fontSize:13.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)'}}>vs</span> {window.ETG.teamName(m.bId)}</div>
-                    <div className="tiny">{PhaseLabel(m.phase,m.slot)}{m.group?' '+m.group:''}</div>
+                    <div className="tiny">{PhaseLabel(m.phase)}{m.group?' '+m.group:''}</div>
                   </div>
                   <div className="tnum" style={{fontWeight:800,fontSize:15,color:m.status==='done'?'var(--ink)':'var(--ink-3)'}}>{m.scoreA==null?'–':m.scoreA}:{m.scoreB==null?'–':m.scoreB}</div>
                   <Ic.pen style={{width:15,height:15,color:'var(--ink-3)'}}/>
@@ -127,7 +120,7 @@ function StaffResults(){
       <Sheet open={!!edit} onClose={()=>setEdit(null)}>
         {edit && (
           <div style={{padding:'4px 18px 28px'}}>
-            <div className="h3" style={{marginBottom:4}}>{PhaseLabel(edit.phase,edit.slot)}{edit.group?' '+edit.group:''}</div>
+            <div className="h3" style={{marginBottom:4}}>{PhaseLabel(edit.phase)}{edit.group?' '+edit.group:''}</div>
             <div className="tiny" style={{marginBottom:18}}>{edit.day} · {edit.time} · {edit.court}</div>
             <div className="row" style={{gap:10,alignItems:'flex-start'}}>
               {[['a',edit.aId,a,setA],['b',edit.bId,b,setB]].map(([k,id,val,setVal])=>(
@@ -221,7 +214,7 @@ function StaffTabellone(){
       <div className="card card-pad" style={{textAlign:'center',padding:'36px 22px'}}>
         <div style={{width:60,height:60,borderRadius:'50%',background:'var(--sand-soft)',display:'grid',placeItems:'center',margin:'0 auto 14px'}}><Ic.trophy style={{width:26,height:26,color:'var(--orange)'}}/></div>
         <div className="h3">Tabellone non ancora generato</div>
-        <p className="small" style={{marginTop:8,maxWidth:300,marginInline:'auto',lineHeight:1.55}}>Quarti: 1A–1H, 1B–1G, 1C–1F, 1D–1E. Semifinali: V(1A‑1H)–V(1C‑1F) e V(1B‑1G)–V(1D‑1E). Finale 3°/4° e finale 1°/2°.</p>
+        <p className="small" style={{marginTop:8,maxWidth:300,marginInline:'auto',lineHeight:1.55}}>Si forma con le <b>4 vincitrici della Giornata 1</b> e le <b>4 vincitrici della Giornata 2</b>. Abbinamenti: 1A–1H, 1B–1G, 1C–1F, 1D–1E.</p>
         <Btn variant="primary" block style={{marginTop:16}} disabled={!st.d2Done} onClick={genB}><Ic.bracket style={{width:18,height:18}}/> Genera il tabellone</Btn>
         {!st.d2Done && <div className="tiny" style={{marginTop:10,opacity:.7}}>Disponibile quando tutte le partite dei mini gironi sono concluse.</div>}
       </div>

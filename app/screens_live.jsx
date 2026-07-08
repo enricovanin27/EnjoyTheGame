@@ -35,7 +35,7 @@ function Scoreboard({m, live}){
   );
 }
 
-function PhaseLabel(ph, slot){ if(ph==='finale'&&slot===0) return 'Finale 3°/4°'; if(ph==='finale') return 'Finale 🏆'; return {group1:'Girone',group2:'Mini girone',quarti:'Quarto',semi:'Semifinale'}[ph]||ph; }
+function PhaseLabel(ph){ return {group1:'Girone',group2:'Mini girone',quarti:'Quarto',semi:'Semifinale',finale:'Finale'}[ph]||ph; }
 
 /* ---- empty state: sorteggio non ancora effettuato ---- */
 function NotDrawnYet({what}){
@@ -128,8 +128,6 @@ function BMatch({m,label}){
 }
 function Bracket(){
   const b=window.ETG.helpers.bracketMatches();
-  const terzo=b.finale.find(m=>m.slot===0);
-  const finaleMain=b.finale.find(m=>m.slot===1);
   return (
     <div className="bracket">
       <div className="bcol">
@@ -141,19 +139,13 @@ function Bracket(){
         {b.semi.map((m,i)=><BMatch key={m.id} m={m} label={'SF'+(i+1)}/>)}
       </div>
       <div className="bcol">
-        {terzo && <>
-          <div className="eyebrow" style={{marginBottom:2}}>3°/4° posto</div>
-          <BMatch m={terzo} label="🥉 3°/4° posto"/>
-        </>}
-        {finaleMain && <>
-          <div className="eyebrow" style={{marginBottom:2,marginTop:terzo?12:0}}>Finale</div>
-          <BMatch m={finaleMain} label="🏆 Finale"/>
-          <div className="card" style={{padding:'12px',textAlign:'center',background:'var(--teal)',color:'#fff',border:0,marginTop:4}}>
-            <Ic.trophy style={{width:24,height:24,color:'var(--sand)'}}/>
-            <div className="tiny" style={{color:'rgba(255,255,255,.7)',marginTop:4}}>Vincitore</div>
-            <div style={{fontWeight:800}}>IV Edizione</div>
-          </div>
-        </>}
+        <div className="eyebrow" style={{marginBottom:2}}>Finale</div>
+        {b.finale.map((m)=><BMatch key={m.id} m={m} label="🏆 Finale"/>)}
+        <div className="card" style={{padding:'12px',textAlign:'center',background:'var(--teal)',color:'#fff',border:0,marginTop:4}}>
+          <Ic.trophy style={{width:24,height:24,color:'var(--sand)'}}/>
+          <div className="tiny" style={{color:'rgba(255,255,255,.7)',marginTop:4}}>Vincitore</div>
+          <div style={{fontWeight:800}}>IV Edizione</div>
+        </div>
       </div>
     </div>
   );

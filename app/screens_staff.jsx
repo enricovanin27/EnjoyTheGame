@@ -245,6 +245,7 @@ function StaffRegs(){
   const store=useStore(); const regs=store.state.registrations;
   const [openP,setOpenP]=useState(null); // {reg,player,idx}
   const [delT,setDelT]=useState(null);   // team registration pending delete
+  const [delP,setDelP]=useState(null);   // {reg,player,idx} player pending removal from a team
   const [formMode,setFormMode]=useState(false); // selecting solos to form a team
   const [picked,setPicked]=useState([]); // solo ids
   const [newName,setNewName]=useState(''); // new team name
@@ -394,6 +395,12 @@ function StaffRegs(){
               <Btn variant="ghost" className="grow" onClick={()=>window.print()}>Stampa / PDF</Btn>
               <Btn variant="teal" className="grow" onClick={()=>setOpenP(null)}>Chiudi</Btn>
             </div>
+            {openP.reg.type==='team' && (
+              <button className="chip chip-red" style={{marginTop:10,width:'100%',justifyContent:'center'}}
+                onClick={()=>{ const {reg,player,idx}=openP; setOpenP(null); setDelP({reg,player,idx}); }}>
+                <Ic.trash style={{width:13,height:13}}/> Rimuovi giocatore dalla squadra
+              </button>
+            )}
           </div>
         )}
       </Sheet>
@@ -408,6 +415,21 @@ function StaffRegs(){
             <div className="row g10" style={{marginTop:22}}>
               <Btn variant="ghost" className="grow" onClick={()=>setDelT(null)}>Annulla</Btn>
               <Btn variant="primary" className="grow" style={{background:'var(--red)',boxShadow:'none'}} onClick={()=>{window.ETG.Store.deleteRegistrationCloud(window.ETG.staffPin,delT.id);setDelT(null);}}><Ic.trash style={{width:16,height:16}}/> Elimina squadra</Btn>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      {/* remove single player from a team (e.g. iscritto due volte per errore) */}
+      <Sheet open={!!delP} onClose={()=>setDelP(null)}>
+        {delP && (
+          <div style={{padding:'4px 18px 28px',textAlign:'center'}}>
+            <div style={{width:64,height:64,borderRadius:'50%',background:'rgba(220,73,55,.1)',display:'grid',placeItems:'center',margin:'6px auto 0'}}><Ic.trash style={{width:28,height:28,color:'var(--red)'}}/></div>
+            <div className="h3" style={{marginTop:14}}>Rimuovere {playerName(delP.player,delP.idx)}?</div>
+            <div className="small" style={{marginTop:8,maxWidth:300,marginInline:'auto'}}>Il modulo NOI verrà tolto dalla squadra «{delP.reg.teamName}». Usalo per correggere una doppia iscrizione. L'azione non è reversibile.</div>
+            <div className="row g10" style={{marginTop:22}}>
+              <Btn variant="ghost" className="grow" onClick={()=>setDelP(null)}>Annulla</Btn>
+              <Btn variant="primary" className="grow" style={{background:'var(--red)',boxShadow:'none'}} onClick={()=>{window.ETG.Store.removePlayerCloud(window.ETG.staffPin,delP.reg.id,delP.idx);setDelP(null);}}><Ic.trash style={{width:16,height:16}}/> Rimuovi giocatore</Btn>
             </div>
           </div>
         )}

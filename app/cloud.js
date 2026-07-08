@@ -124,6 +124,15 @@
     return { ok:true };
   };
 
+  // STAFF: rimuove un singolo giocatore da una squadra (es. doppia iscrizione per errore)
+  Store.removePlayerCloud = async function(pin, regId, idx){
+    if(enabled){
+      var res = await client.rpc('staff_remove_player', { p_pin:String(pin), p_id:regId, p_idx:idx });
+      if(res.error){ console.warn('[cloud] staff_remove_player', res.error.message); return { ok:false }; }
+    }
+    return Store.removePlayerFromTeam(regId, idx);
+  };
+
   // STAFF: forma una squadra dai singoli
   Store.formTeamCloud = async function(pin, teamName, soloIds, roster){
     var reg = Store.createTeamFromSolos(teamName, soloIds, roster); // ottimistico in locale
