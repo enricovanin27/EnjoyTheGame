@@ -97,8 +97,6 @@ function NoiForm({person,onChange,errors={},showExtras,sampleIdx=0}){
       <Field label="Taglia della maglia" req error={errors.taglia} hint="Per la maglia ufficiale del torneo">
         <Seg value={p.taglia} onChange={v=>set('taglia',v)} options={['S','M','L','XL','XXL']}/>
       </Field>
-      <img src="assets/taglia-maglia.jpeg" alt="Tabella taglie maglia" style={{width:'100%',borderRadius:12,marginTop:8}}/>
-      <div className="hint" style={{marginTop:4}}>Le magliette vestono strette di spalle. Se sei grosso, prendi una taglia in più!</div>
 
       {showExtras && <>
         <div className="hr-soft"></div>
