@@ -246,6 +246,8 @@ function StaffRegs(){
   const [openP,setOpenP]=useState(null); // {reg,player,idx}
   const [delT,setDelT]=useState(null);   // team registration pending delete
   const [delP,setDelP]=useState(null);   // {reg,player,idx} player pending removal from a team
+  const [editT,setEditT]=useState(null); // team registration pending rename
+  const [editName,setEditName]=useState('');
   const [formMode,setFormMode]=useState(false); // selecting solos to form a team
   const [picked,setPicked]=useState([]); // solo ids
   const [newName,setNewName]=useState(''); // new team name
@@ -305,7 +307,12 @@ function StaffRegs(){
             <div key={r.id} className="card card-pad">
               <div className="row between" style={{alignItems:'flex-start'}}>
                 <div className="row g10"><Avatar name={r.teamName} color="var(--orange)"/><div><div style={{fontWeight:800}}>{r.teamName}</div><div className="tiny">Cap. {r.captain&&r.captain.nome} · {r.captain&&r.captain.tel}</div></div></div>
-                <button className="iconbtn" title="Elimina squadra" onClick={()=>setDelT(r)} style={{borderColor:'rgba(220,73,55,.35)',color:'var(--red)',width:34,height:34,flex:'0 0 auto'}}><Ic.trash style={{width:16,height:16}}/></button>
+                <div className="row g8">
+                  <button className="iconbtn" title="Modifica nome squadra" onClick={()=>{setEditT(r);setEditName(r.teamName);}} style={{width:34,height:34,flex:'0 0 auto'}}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>
+                  </button>
+                  <button className="iconbtn" title="Elimina squadra" onClick={()=>setDelT(r)} style={{borderColor:'rgba(220,73,55,.35)',color:'var(--red)',width:34,height:34,flex:'0 0 auto'}}><Ic.trash style={{width:16,height:16}}/></button>
+                </div>
               </div>
               <div className="row g8" style={{marginTop:11,flexWrap:'wrap',alignItems:'center'}}>
                 <span className="chip chip-teal" style={{fontFamily:'var(--mono)',letterSpacing:'.1em'}}><Ic.key style={{width:12,height:12}}/> {r.code||'—'}</span>
@@ -401,6 +408,22 @@ function StaffRegs(){
                 <Ic.trash style={{width:13,height:13}}/> Rimuovi giocatore dalla squadra
               </button>
             )}
+          </div>
+        )}
+      </Sheet>
+
+      {/* rename team */}
+      <Sheet open={!!editT} onClose={()=>setEditT(null)}>
+        {editT && (
+          <div style={{padding:'4px 18px 28px'}}>
+            <div className="h3">Correggi nome squadra</div>
+            <div className="small" style={{marginTop:6}}>Nome attuale: «{editT.teamName}»</div>
+            <input className="control" style={{marginTop:16}} value={editName} autoFocus
+              onChange={e=>setEditName(e.target.value)} placeholder="Nome squadra" />
+            <div className="row g10" style={{marginTop:22}}>
+              <Btn variant="ghost" className="grow" onClick={()=>setEditT(null)}>Annulla</Btn>
+              <Btn variant="teal" className="grow" disabled={!editName.trim()} onClick={()=>{window.ETG.Store.renameTeamCloud(window.ETG.staffPin,editT.id,editName.trim());setEditT(null);}}>Salva</Btn>
+            </div>
           </div>
         )}
       </Sheet>

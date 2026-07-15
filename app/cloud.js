@@ -124,6 +124,15 @@
     return { ok:true };
   };
 
+  // STAFF: corregge il nome di una squadra
+  Store.renameTeamCloud = async function(pin, regId, newName){
+    if(enabled){
+      var res = await client.rpc('staff_rename_team', { p_pin:String(pin), p_id:regId, p_name:newName });
+      if(res.error){ console.warn('[cloud] staff_rename_team', res.error.message); return { ok:false }; }
+    }
+    return Store.renameTeam(regId, newName);
+  };
+
   // STAFF: rimuove un singolo giocatore da una squadra (es. doppia iscrizione per errore)
   Store.removePlayerCloud = async function(pin, regId, idx){
     if(enabled){

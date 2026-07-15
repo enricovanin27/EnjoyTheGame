@@ -125,6 +125,14 @@
       r.players.push(player); save(); return {ok:true,reg:r};
     },
     deleteRegistration(id){ state.registrations=state.registrations.filter(r=>r.id!==id); save(); },
+    /* staff corregge il nome di una squadra */
+    renameTeam(regId, newName){
+      const r=state.registrations.find(x=>x.id===regId);
+      if(!r) return {ok:false,reason:'notfound'};
+      const name=(newName||'').trim();
+      if(!name) return {ok:false,reason:'empty'};
+      r.teamName=name; save(); return {ok:true,reg:r};
+    },
     /* staff rimuove un singolo giocatore da una squadra (es. iscritto due volte per errore) */
     removePlayerFromTeam(regId, idx){
       const r=state.registrations.find(x=>x.id===regId);
