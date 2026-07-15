@@ -125,6 +125,15 @@
       r.players.push(player); save(); return {ok:true,reg:r};
     },
     deleteRegistration(id){ state.registrations=state.registrations.filter(r=>r.id!==id); save(); },
+    /* staff corregge nome/cognome di un giocatore */
+    renamePlayer(regId, idx, nome, cognome){
+      const r=state.registrations.find(x=>x.id===regId);
+      if(!r) return {ok:false,reason:'notfound'};
+      if(idx<0||idx>=r.players.length) return {ok:false,reason:'badindex'};
+      const n=(nome||'').trim(), c=(cognome||'').trim();
+      if(!n||!c) return {ok:false,reason:'empty'};
+      r.players[idx].nome=n; r.players[idx].cognome=c; save(); return {ok:true,reg:r};
+    },
     /* staff corregge il nome di una squadra */
     renameTeam(regId, newName){
       const r=state.registrations.find(x=>x.id===regId);

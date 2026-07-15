@@ -124,6 +124,15 @@
     return { ok:true };
   };
 
+  // STAFF: corregge nome/cognome di un giocatore
+  Store.renamePlayerCloud = async function(pin, regId, idx, nome, cognome){
+    if(enabled){
+      var res = await client.rpc('staff_rename_player', { p_pin:String(pin), p_id:regId, p_idx:idx, p_nome:nome, p_cognome:cognome });
+      if(res.error){ console.warn('[cloud] staff_rename_player', res.error.message); return { ok:false }; }
+    }
+    return Store.renamePlayer(regId, idx, nome, cognome);
+  };
+
   // STAFF: corregge il nome di una squadra
   Store.renameTeamCloud = async function(pin, regId, newName){
     if(enabled){

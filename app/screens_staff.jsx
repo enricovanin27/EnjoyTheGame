@@ -248,6 +248,9 @@ function StaffRegs(){
   const [delP,setDelP]=useState(null);   // {reg,player,idx} player pending removal from a team
   const [editT,setEditT]=useState(null); // team registration pending rename
   const [editName,setEditName]=useState('');
+  const [editPl,setEditPl]=useState(null); // {reg,player,idx} player pending rename
+  const [editPlNome,setEditPlNome]=useState('');
+  const [editPlCognome,setEditPlCognome]=useState('');
   const [formMode,setFormMode]=useState(false); // selecting solos to form a team
   const [picked,setPicked]=useState([]); // solo ids
   const [newName,setNewName]=useState(''); // new team name
@@ -402,6 +405,10 @@ function StaffRegs(){
               <Btn variant="ghost" className="grow" onClick={()=>window.print()}>Stampa / PDF</Btn>
               <Btn variant="teal" className="grow" onClick={()=>setOpenP(null)}>Chiudi</Btn>
             </div>
+            <button className="chip chip-teal" style={{marginTop:10,width:'100%',justifyContent:'center'}}
+              onClick={()=>{ const {reg,player,idx}=openP; setOpenP(null); setEditPl({reg,player,idx}); setEditPlNome(player.nome||''); setEditPlCognome(player.cognome||''); }}>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg> Correggi nome/cognome
+            </button>
             {openP.reg.type==='team' && (
               <button className="chip chip-red" style={{marginTop:10,width:'100%',justifyContent:'center'}}
                 onClick={()=>{ const {reg,player,idx}=openP; setOpenP(null); setDelP({reg,player,idx}); }}>
@@ -423,6 +430,31 @@ function StaffRegs(){
             <div className="row g10" style={{marginTop:22}}>
               <Btn variant="ghost" className="grow" onClick={()=>setEditT(null)}>Annulla</Btn>
               <Btn variant="teal" className="grow" disabled={!editName.trim()} onClick={()=>{window.ETG.Store.renameTeamCloud(window.ETG.staffPin,editT.id,editName.trim());setEditT(null);}}>Salva</Btn>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      {/* rename player */}
+      <Sheet open={!!editPl} onClose={()=>setEditPl(null)}>
+        {editPl && (
+          <div style={{padding:'4px 18px 28px'}}>
+            <div className="h3">Correggi nome giocatore</div>
+            <div className="small" style={{marginTop:6}}>Attuale: «{editPl.player.nome} {editPl.player.cognome}»</div>
+            <div className="grid2" style={{marginTop:16}}>
+              <div>
+                <label className="tiny" style={{display:'block',marginBottom:6}}>Nome</label>
+                <input className="control" value={editPlNome} autoFocus onChange={e=>setEditPlNome(e.target.value)} placeholder="Nome"/>
+              </div>
+              <div>
+                <label className="tiny" style={{display:'block',marginBottom:6}}>Cognome</label>
+                <input className="control" value={editPlCognome} onChange={e=>setEditPlCognome(e.target.value)} placeholder="Cognome"/>
+              </div>
+            </div>
+            <div className="row g10" style={{marginTop:22}}>
+              <Btn variant="ghost" className="grow" onClick={()=>setEditPl(null)}>Annulla</Btn>
+              <Btn variant="teal" className="grow" disabled={!editPlNome.trim()||!editPlCognome.trim()}
+                onClick={()=>{window.ETG.Store.renamePlayerCloud(window.ETG.staffPin,editPl.reg.id,editPl.idx,editPlNome.trim(),editPlCognome.trim());setEditPl(null);}}>Salva</Btn>
             </div>
           </div>
         )}
