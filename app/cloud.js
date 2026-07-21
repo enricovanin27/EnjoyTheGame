@@ -163,7 +163,104 @@
     return { ok: !!reg, reg: reg };
   };
 
+  /* ============================================================
+     SINCRONIZZAZIONE TORNEO (calendario, risultati, tabellone, live)
+     Lo staff (con PIN) SCRIVE; tutti gli altri LEGGONO in tempo reale.
+     In demo (Supabase non configurato) tutto ricade sul locale.
+     ============================================================ */
+
+  // campi dello stato che rappresentano il "torneo" (le iscrizioni si sincronizzano a parte)
+  function pickTournament(s){
+    return { teams:s.teams||{}, matches:s.matches||[], schedule:s.schedule||{},
+             d1win:s.d1win||{}, d2win:s.d2win||{}, d2groups:s.d2groups||{},
+             drawnAt:s.drawnAt||null, live:s.live||null };
+  }
+  var applyingRemote = false;   // evita loop: quando applichiamo dati remoti non ripubblichiamo
+  var syncStarted    = false;
+
+  // applica lo stato ricevuto dal server (senza toccare le iscrizioni)
+  function applyTournament(row){
+    var t = (row && row.state) || {};
+    applyingRemote = true;
+    try{
+      origUpdate(function(s){
+        s.teams   = t.teams   || {};
+        s.matches = t.matches || [];
+        if(t.schedule) s.schedule = t.schedule;
+        s.d1win   = t.d1win   || {};
+        s.d2win   = t.d2win   || {};
+        s.d2groups= t.d2groups|| {};
+        s.drawnAt = t.drawnAt || undefined;
+        s.live    = t.live    || null;
+        s.published = !!(row && row.published);
+      });
+    } finally { applyingRemote = false; }
+  }
+
+  // PUSH: salva il torneo sul server (debounced). Solo staff autenticato.
+  var pushTimer = null;
+  function pushTournamentNow(){
+    if(!enabled || !window.ETG.staffPin) return;
+    var s = Store.state;
+    client.rpc('tournament_save', {
+      p_pin: String(window.ETG.staffPin),
+      p_state: pickTournament(s),
+      p_published: !!s.published
+    }).then(function(res){ if(res.error) console.warn('[cloud] tournament_save', res.error.message); });
+  }
+  function pushTournament(){ if(!enabled || !window.ETG.staffPin) return;
+    if(pushTimer) clearTimeout(pushTimer); pushTimer = setTimeout(pushTournamentNow, 400); }
+
+  // LOAD: scarica il torneo dal server (versione staff se autenticato, altrimenti pubblica)
+  Store.loadTournamentAsync = async function(){
+    if(!enabled) return { ok:true, local:true };
+    try{
+      var res = window.ETG.staffPin
+        ? await client.rpc('tournament_load_staff', { p_pin:String(window.ETG.staffPin) })
+        : await client.rpc('tournament_get');
+      if(res.error){ console.warn('[cloud] tournament load', res.error.message); return { ok:false }; }
+      var row = Array.isArray(res.data) ? res.data[0] : res.data;
+      if(row && row.state){ applyTournament(row); }
+      else if(!window.ETG.staffPin){ // pubblico e niente riga pubblicata → nascondi
+        applyingRemote = true; try{ origUpdate(function(s){ s.published = false; }); } finally { applyingRemote = false; }
+      }
+      return { ok:true };
+    }catch(e){ console.warn('[cloud] tournament load', e && e.message); return { ok:false }; }
+  };
+
+  // avvia la sincronizzazione (load iniziale + realtime + polling di sicurezza)
+  Store.startTournamentSync = function(){
+    if(!enabled || syncStarted) return; syncStarted = true;
+    Store.loadTournamentAsync();
+    try{
+      client.channel('etg-tournament')
+        .on('postgres_changes', { event:'*', schema:'public', table:'tournament' }, function(){
+          if(!window.ETG.staffPin) Store.loadTournamentAsync();   // lo staff è la fonte: non si auto-sovrascrive
+        })
+        .subscribe();
+    }catch(e){ console.warn('[cloud] realtime non attivo', e && e.message); }
+    // polling di sicurezza per il pubblico (se il realtime non è abilitato)
+    setInterval(function(){ if(!window.ETG.staffPin) Store.loadTournamentAsync(); }, 15000);
+  };
+
+  // Aggancia il PUSH alle modifiche dello staff.
+  // 1) metodi "torneo" che scrivono direttamente lo stato:
+  ['drawGroups','clearDraw','generateDay2','generateBracket','moveMatch',
+   'setMatchTimeOverride','setScheduleConfig','setPublished','setScore'].forEach(function(name){
+    var orig = Store[name] ? Store[name].bind(Store) : null;
+    if(!orig) return;
+    Store[name] = function(){ var r = orig.apply(null, arguments); pushTournament(); return r; };
+  });
+  // 2) le modifiche "live"/risultati passano da Store.update (punteggi, time-out, fine partita):
+  var origUpdate = Store.update.bind(Store);
+  Store.update = function(fn){ origUpdate(fn); if(!applyingRemote) pushTournament(); };
+
   window.ETG.cloud = { enabled: enabled, client: client };
-  if(enabled) console.info('[cloud] Supabase attivo — archivio centrale online.');
-  else console.info('[cloud] modalità demo locale (Supabase non configurato).');
+  if(enabled){
+    console.info('[cloud] Supabase attivo — archivio centrale online.');
+    // avvia la sincronizzazione del torneo appena il resto dell'app è pronto
+    setTimeout(function(){ Store.startTournamentSync(); }, 0);
+  } else {
+    console.info('[cloud] modalità demo locale (Supabase non configurato).');
+  }
 })();

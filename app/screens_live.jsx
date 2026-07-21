@@ -52,6 +52,21 @@ function NotDrawnYet({what}){
   );
 }
 
+/* ---- empty state: sorteggiato ma non ancora pubblicato dallo staff ---- */
+function NotPublishedYet({what}){
+  return (
+    <div className="card card-pad" style={{textAlign:'center',padding:'40px 22px'}}>
+      <div style={{width:64,height:64,borderRadius:'50%',background:'var(--sand-soft)',display:'grid',placeItems:'center',margin:'0 auto 16px'}}>
+        <Ic.clock style={{width:28,height:28,color:'var(--orange)'}}/>
+      </div>
+      <div className="h3">{what} in preparazione</div>
+      <p className="small" style={{marginTop:8,maxWidth:300,marginInline:'auto',lineHeight:1.55}}>
+        Lo staff sta ultimando il <b>calendario dei gironi</b>. Sarà visibile qui non appena verrà <b>pubblicato</b>. Torna tra poco!
+      </p>
+    </div>
+  );
+}
+
 /* ---- match row ---- */
 function MatchRow({m}){
   const done=m.status==='done', live=m.status==='live';
@@ -73,6 +88,61 @@ function MatchRow({m}){
           <span className="tnum" style={{flex:'0 0 auto',fontWeight:800,fontSize:15,color:live?'var(--red)':bw?'var(--ink)':'var(--ink-3)'}}>{m.scoreB==null?'–':m.scoreB}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---- programma gironi: vista generale a griglia (2 campi) ---- */
+function BreakRow({cfg}){
+  return (
+    <div className="card" style={{padding:'9px 12px',background:'var(--teal)',color:'#fff',border:0,display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
+      <Ic.ball style={{width:16,height:16,color:'var(--sand)'}}/>
+      <span style={{fontWeight:800,fontSize:13}}>{(cfg&&cfg.breakLabel)||'Pausa'}</span>
+      {cfg&&cfg.breakMin?<span className="tiny" style={{opacity:.85}}>· {cfg.breakMin} min</span>:null}
+    </div>
+  );
+}
+function PubCell({m}){
+  if(!m) return <div className="card" style={{padding:'8px 10px',textAlign:'center',color:'var(--ink-3)',borderStyle:'dashed'}}>—</div>;
+  const live=m.status==='live', done=m.status==='done';
+  const aw=done&&m.scoreA>m.scoreB, bw=done&&m.scoreB>m.scoreA;
+  return (
+    <div className="card" style={{padding:'8px 10px',borderColor:live?'var(--red)':'var(--line)'}}>
+      <div className="tiny" style={{marginBottom:3,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span className="mono" style={{fontWeight:800,color:'var(--orange)'}}>Girone {m.group}</span>
+        {live?<span className="chip chip-live" style={{padding:'1px 6px'}}><span className="dot pulse"></span></span>:null}
+      </div>
+      <div className="row between" style={{gap:8}}>
+        <span style={{flex:'1 1 auto',minWidth:0,fontWeight:aw?800:600,fontSize:12.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:bw?'var(--ink-3)':'var(--ink)'}}>{TN(m.aId)}</span>
+        <span className="tnum" style={{flex:'0 0 auto',fontWeight:800,fontSize:13}}>{m.scoreA==null?'':m.scoreA}</span>
+      </div>
+      <div className="row between" style={{gap:8,marginTop:2}}>
+        <span style={{flex:'1 1 auto',minWidth:0,fontWeight:bw?800:600,fontSize:12.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:aw?'var(--ink-3)':'var(--ink)'}}>{TN(m.bId)}</span>
+        <span className="tnum" style={{flex:'0 0 auto',fontWeight:800,fontSize:13}}>{m.scoreB==null?'':m.scoreB}</span>
+      </div>
+    </div>
+  );
+}
+function GroupGridView(){
+  const grid=window.ETG.helpers.groupGrid();
+  if(!grid.rows.length) return null;
+  return (
+    <div className="stack g8">
+      <div style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',gap:8}}>
+        <div></div>
+        <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 1</div>
+        <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 2</div>
+      </div>
+      {grid.rows.map(r=>(
+        <React.Fragment key={r.slot}>
+          {r.breakBefore && <BreakRow cfg={grid.cfg}/>}
+          <div style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',gap:8,alignItems:'stretch'}}>
+            <div style={{textAlign:'center',alignSelf:'center'}}><div className="mono" style={{fontWeight:800,fontSize:13}}>{r.time}</div></div>
+            <PubCell m={r.courts[0]}/>
+            <PubCell m={r.courts[1]}/>
+          </div>
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -157,6 +227,8 @@ function LiveArea({go, sub, setSub}){
   const sched=window.ETG.helpers.schedule();
   const st=window.ETG.Store.tournamentStatus();
   const drawn = st.drawn;
+  const published = window.ETG.Store.isPublished();
+  const visible = drawn && published; // il pubblico vede il calendario solo se lo staff lo ha pubblicato
   const tabs=[['calendario','Calendario'],['gironi','Gironi'],['tabellone','Tabellone']];
 
   return (
@@ -176,9 +248,15 @@ function LiveArea({go, sub, setSub}){
       </div>
 
       <div className="screen section">
-        {sub==='calendario' && (drawn ? (
+        {sub==='calendario' && (visible ? (
           <div className="stack g20" key="cal">
-            {['SAB 25 LUG','DOM 26 LUG'].map(day=>{
+            {/* Giornata 1 · vista generale a griglia (2 mezzi campi in contemporanea) */}
+            <div>
+              <div className="row g8" style={{marginBottom:12}}><span className="chip chip-orange">SAB 25 LUG</span><span className="tiny">Gironi · 2 campi in contemporanea</span></div>
+              <GroupGridView/>
+            </div>
+            {/* Giornata 2 e fasi finali · lista cronologica */}
+            {['DOM 26 LUG'].map(day=>{
               const items=sched.filter(m=>m.day===day);
               if(!items.length) return null;
               return (
@@ -189,29 +267,34 @@ function LiveArea({go, sub, setSub}){
               );
             })}
           </div>
-        ) : <NotDrawnYet what="Calendario"/>)}
+        ) : (drawn ? <NotPublishedYet what="Calendario"/> : <NotDrawnYet what="Calendario"/>))}
 
-        {sub==='gironi' && (drawn ? (
+        {sub==='gironi' && (visible ? (
           <div className="stack g16" key="gir">
             <div className="eyebrow">Giornata 1 · gironi da 4 — passa la 1ª ai quarti</div>
-            {['A','B','C','D'].map(g=><StandTable key={g} phase="group1" group={g} qualifies={1}/>)}
+            {['A','B','C','D'].map(g=>(
+              <div key={g} className="stack g8">
+                <StandTable phase="group1" group={g} qualifies={1}/>
+                <div className="stack g6">{window.ETG.helpers.groupSchedule(g).map(m=><MatchRow key={m.id} m={m}/>)}</div>
+              </div>
+            ))}
             {st.d2Exists && <>
               <div className="hr-soft"></div>
               <div className="eyebrow">Giornata 2 · mini gironi da 3 — passa la 1ª</div>
               {['E','F','G','H'].map(g=><StandTable key={g} phase="group2" group={g} qualifies={1}/>)}
             </>}
           </div>
-        ) : <NotDrawnYet what="Gironi"/>)}
+        ) : (drawn ? <NotPublishedYet what="Gironi"/> : <NotDrawnYet what="Gironi"/>))}
 
-        {sub==='tabellone' && (st.bracketExists ? (
+        {sub==='tabellone' && (published && st.bracketExists ? (
           <div key="brk">
             <div className="notice" style={{marginBottom:16}}>4 vincitrici della Giornata 1 + 4 vincitrici della Giornata 2 si sfidano a eliminazione diretta (tempo 15 min).</div>
             <Bracket/>
           </div>
-        ) : <NotDrawnYet what="Tabellone"/>)}
+        ) : (drawn && !published ? <NotPublishedYet what="Tabellone"/> : <NotDrawnYet what="Tabellone"/>))}
       </div>
     </div>
   );
 }
 
-Object.assign(window,{ LiveArea, Scoreboard, MatchRow, StandTable, Bracket, PhaseLabel, teamColor });
+Object.assign(window,{ LiveArea, Scoreboard, MatchRow, StandTable, Bracket, PhaseLabel, teamColor, GroupGridView, PubCell, BreakRow, NotPublishedYet });

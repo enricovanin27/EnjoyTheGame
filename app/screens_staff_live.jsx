@@ -176,13 +176,17 @@ function StaffGironi(){
   const st=window.ETG.Store.tournamentStatus();
   if(!st.drawn) return <DrawPanel/>;
   const reDraw=()=>{ if(confirm('Ri-sorteggiare i gironi? Verranno azzerati risultati, mini gironi e tabellone.')) window.ETG.Store.drawGroups(s.registrations.filter(r=>r.type==='team').length===16?undefined:TEST_TEAMS); };
+  const cancelDraw=()=>{ if(confirm('Annullare il sorteggio? Verranno eliminati gironi, calendario, mini gironi e tabellone. Le iscrizioni NON vengono toccate.')) window.ETG.Store.clearDraw(); };
   const genD2=()=>{ const r=window.ETG.Store.generateDay2(); if(!r.ok) alert(r.reason==='incomplete'?'Completa prima tutte le partite della Giornata 1.':'Sorteggia prima i gironi.'); };
   return (
     <div className="stack g16">
-      <div className="card" style={{padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+      <div className="card" style={{padding:'12px 14px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <span style={{width:38,height:38,borderRadius:10,background:'rgba(30,138,91,.12)',display:'grid',placeItems:'center',flex:'0 0 auto'}}><Ic.check style={{width:18,height:18,color:'var(--ok,#1E8A5B)'}}/></span>
         <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:14}}>Gironi sorteggiati</div><div className="tiny">4 gironi da 4 · calendario Giornata 1 pronto</div></div>
-        <button className="btn btn-ghost btn-sm" onClick={reDraw}>Ri-sorteggia</button>
+        <div className="row g6" style={{flex:'0 0 auto'}}>
+          <button className="btn btn-ghost btn-sm" onClick={reDraw}>Ri-sorteggia</button>
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--red)'}} onClick={cancelDraw}>Annulla sorteggio</button>
+        </div>
       </div>
       <div className="eyebrow">Giornata 1 · gironi da 4 — passa la 1ª ai quarti</div>
       {['A','B','C','D'].map(g=><StandTable key={g} phase="group1" group={g} qualifies={1}/>)}
@@ -231,6 +235,179 @@ function StaffTabellone(){
   );
 }
 
+/* ============ staff: PROGRAMMA GIRONI (orari, campi, spostamenti) ============ */
+
+/* singola casella partita nella griglia generale */
+function SchedCell({m, onTap}){
+  if(!m) return <div className="card" style={{padding:'9px 10px',textAlign:'center',color:'var(--ink-3)',borderStyle:'dashed'}}>—</div>;
+  const live=m.status==='live', done=m.status==='done';
+  return (
+    <button onClick={()=>onTap(m)} style={{all:'unset',cursor:'pointer',display:'block'}}>
+      <div className="card" style={{padding:'8px 10px',borderColor:live?'var(--red)':'var(--line)'}}>
+        <div className="tiny" style={{marginBottom:3,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span className="mono" style={{fontWeight:800,color:'var(--orange)'}}>Girone {m.group}</span>
+          {m.timeOverride ? <span className="mono" title="orario personalizzato" style={{color:'var(--teal)'}}>✎{m.time}</span>
+            : done ? <span className="mono">{m.scoreA}:{m.scoreB}</span> : <Ic.pen style={{width:12,height:12,color:'var(--ink-3)'}}/>}
+        </div>
+        <div style={{fontWeight:700,fontSize:12.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{window.ETG.teamName(m.aId)}</div>
+        <div style={{fontWeight:700,fontSize:12.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'var(--ink-2,#555)'}}>{window.ETG.teamName(m.bId)}</div>
+      </div>
+    </button>
+  );
+}
+
+function StaffCalendario(){
+  const store=useStore(); const s=store.state;
+  const st=window.ETG.Store.tournamentStatus();
+  const [edit,setEdit]=useState(null);
+  const cfg=window.ETG.Store.scheduleConfig();
+  // form locale della configurazione
+  const [f,setF]=useState(cfg);
+  useEffect(()=>{ setF(window.ETG.Store.scheduleConfig()); },[st.drawn]);
+
+  if(!st.drawn){
+    return (
+      <div className="card card-pad" style={{textAlign:'center',padding:'34px 22px'}}>
+        <div style={{width:58,height:58,borderRadius:'50%',background:'var(--sand-soft)',display:'grid',placeItems:'center',margin:'0 auto 14px'}}><Ic.cal style={{width:24,height:24,color:'var(--orange)'}}/></div>
+        <div className="h3">Programma non ancora disponibile</div>
+        <p className="small" style={{marginTop:8,maxWidth:300,marginInline:'auto',lineHeight:1.55}}>Sorteggia prima i gironi (scheda <b>Gironi</b>). Il calendario della Giornata 1 verrà creato in automatico e potrai gestirlo qui.</p>
+      </div>
+    );
+  }
+
+  const grid=window.ETG.helpers.groupGrid();
+  const slotOptions=grid.rows.map(r=>({v:String(r.slot), l:'Turno '+(r.slot+1)+' · '+r.time}));
+  const applyCfg=()=>{ window.ETG.Store.setScheduleConfig({ start:f.start, slotMin:f.slotMin, breakAfter:f.breakAfter, breakMin:f.breakMin, breakLabel:f.breakLabel }); };
+  const published=window.ETG.Store.isPublished();
+
+  return (
+    <div className="stack g16">
+      {/* pubblicazione del calendario */}
+      <div className="card card-pad" style={{borderColor: published?'var(--ok,#1E8A5B)':'var(--orange)',borderWidth:1.5}}>
+        <div className="row between" style={{gap:12,alignItems:'center'}}>
+          <div style={{minWidth:0,flex:1}}>
+            <div className="row g8" style={{marginBottom:2}}>
+              {published ? <Ic.live style={{width:18,height:18,color:'var(--ok,#1E8A5B)',flex:'0 0 auto'}}/> : <Ic.lock style={{width:18,height:18,color:'var(--orange)',flex:'0 0 auto'}}/>}
+              <div style={{fontWeight:800}}>{published?'Calendario PUBBLICO':'Calendario PRIVATO'}</div>
+            </div>
+            <div className="tiny">{published?'Tutti lo vedono nell’area Risultati & tabellone.':'Visibile solo allo staff finché non lo pubblichi.'}</div>
+          </div>
+          <Btn variant={published?'ghost':'primary'} size="sm" onClick={()=>window.ETG.Store.setPublished(!published)} style={{flex:'0 0 auto'}}>
+            {published?'Rendi privato':'Rendi pubblico'}
+          </Btn>
+        </div>
+      </div>
+
+      {/* configurazione orari */}
+      <div className="card card-pad">
+        <div className="row g8" style={{marginBottom:12}}><Ic.clock style={{width:18,height:18,color:'var(--orange)'}}/><div style={{fontWeight:800}}>Orari & pausa</div></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <Field label="Inizio"><Text value={f.start} onChange={v=>setF({...f,start:v})} placeholder="18:00" inputMode="numeric"/></Field>
+          <Field label="Ogni (min)"><Text value={String(f.slotMin)} onChange={v=>setF({...f,slotMin:v})} inputMode="numeric"/></Field>
+          <Field label="Pausa dopo (turni)"><Text value={String(f.breakAfter)} onChange={v=>setF({...f,breakAfter:v})} inputMode="numeric"/></Field>
+          <Field label="Durata pausa (min)"><Text value={String(f.breakMin)} onChange={v=>setF({...f,breakMin:v})} inputMode="numeric"/></Field>
+        </div>
+        <Field label="Titolo pausa"><Text value={f.breakLabel} onChange={v=>setF({...f,breakLabel:v})} placeholder="Gara da 3 punti"/></Field>
+        <Btn variant="primary" block onClick={applyCfg}><Ic.check style={{width:16,height:16}}/> Applica orari</Btn>
+        <div className="tiny" style={{marginTop:8,opacity:.75}}>Ogni turno ha 2 partite in contemporanea (un mezzo campo ciascuna). La pausa serve alla gara da 3 punti.</div>
+      </div>
+
+      {/* vista generale: griglia turni × campi */}
+      <div className="eyebrow">Vista generale · {grid.rows.length} turni · 2 campi</div>
+      <div className="stack g8">
+        <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'center'}}>
+          <div></div>
+          <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 1</div>
+          <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 2</div>
+        </div>
+        {grid.rows.map(r=>(
+          <React.Fragment key={r.slot}>
+            {r.breakBefore && (
+              <div className="card" style={{padding:'9px 12px',background:'var(--teal)',color:'#fff',border:0,display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
+                <Ic.ball style={{width:16,height:16,color:'var(--sand)'}}/>
+                <span style={{fontWeight:800,fontSize:13}}>{grid.cfg.breakLabel||'Pausa'}</span>
+                <span className="tiny" style={{opacity:.85}}>· {grid.cfg.breakMin} min</span>
+              </div>
+            )}
+            <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'stretch'}}>
+              <div style={{textAlign:'center'}}>
+                <div className="mono" style={{fontWeight:800,fontSize:13}}>{r.time}</div>
+                <div className="tiny">T{r.slot+1}</div>
+              </div>
+              <SchedCell m={r.courts[0]} onTap={setEdit}/>
+              <SchedCell m={r.courts[1]} onTap={setEdit}/>
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* vista girone per girone */}
+      <div className="hr-soft"></div>
+      <div className="eyebrow">Girone per girone</div>
+      <div className="stack g12">
+        {['A','B','C','D'].map(g=>{
+          const list=window.ETG.helpers.groupSchedule(g);
+          if(!list.length) return null;
+          return (
+            <div key={g} className="card" style={{overflow:'hidden'}}>
+              <div className="row between" style={{padding:'10px 13px 6px'}}><div className="h3">Girone {g}</div><span className="tiny mono">{list.length} partite</span></div>
+              <div className="stack g6" style={{padding:'0 10px 12px'}}>
+                {list.map(m=>(
+                  <button key={m.id} onClick={()=>setEdit(m)} style={{all:'unset',cursor:'pointer',display:'block'}}>
+                    <div className="card" style={{padding:'8px 11px',display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:44,flex:'0 0 auto',textAlign:'center'}}><div className="mono" style={{fontWeight:800,fontSize:13}}>{m.time}</div><div className="tiny">{m.court.replace('Campo','C.')}</div></div>
+                      <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)',fontWeight:400}}>vs</span> {window.ETG.teamName(m.bId)}</div>
+                      <Ic.pen style={{width:14,height:14,color:'var(--ink-3)'}}/>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* sheet: sposta / modifica orario di una partita */}
+      <Sheet open={!!edit} onClose={()=>setEdit(null)}>
+        {edit && <SchedEditSheet match={s.matches.find(x=>x.id===edit.id)||edit} slotOptions={slotOptions} onClose={()=>setEdit(null)}/>}
+      </Sheet>
+    </div>
+  );
+}
+
+/* editor di una singola partita del programma (sposta turno/campo, orario forzato) */
+function SchedEditSheet({match, slotOptions, onClose}){
+  useStore(); // ri-render sui cambi
+  const m=window.ETG.Store.matchById(match.id)||match;
+  const [ov,setOv]=useState(m.timeOverride||'');
+  const move=(slot,court)=>window.ETG.Store.moveMatch(m.id,slot,court);
+  const applyOv=()=>{ const r=window.ETG.Store.setMatchTimeOverride(m.id,ov); if(!r.ok&&r.reason==='format') alert('Formato orario non valido. Usa HH:MM (es. 20:15).'); };
+  const clearOv=()=>{ setOv(''); window.ETG.Store.setMatchTimeOverride(m.id,''); };
+  return (
+    <div style={{padding:'4px 18px 26px'}}>
+      <div className="h3" style={{marginBottom:2}}>Girone {m.group}</div>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)',fontWeight:400}}>vs</span> {window.ETG.teamName(m.bId)}</div>
+      <div className="tiny" style={{marginBottom:16}}>{m.day} · attualmente ore <b>{m.time}</b> · {m.court}</div>
+
+      <Field label="Mezzo campo">
+        <Seg value={m.court==='Campo 2'?2:1} onChange={c=>move(m.slot,c)} options={[{v:1,l:'Campo 1'},{v:2,l:'Campo 2'}]}/>
+      </Field>
+      <Field label="Sposta al turno" hint="Se il turno scelto è già occupato su questo campo, le due partite si scambiano.">
+        <Select value={String(m.slot)} onChange={v=>move(v,m.court==='Campo 2'?2:1)} options={slotOptions}/>
+      </Field>
+      <div className="hr-soft"></div>
+      <Field label="Orario personalizzato" hint="Forza un orario diverso solo per questa partita (formato HH:MM).">
+        <div className="row g8">
+          <Text value={ov} onChange={setOv} placeholder={m.time} inputMode="numeric"/>
+          <Btn variant="dark" size="sm" onClick={applyOv}>Imposta</Btn>
+        </div>
+      </Field>
+      {m.timeOverride && <button className="btn btn-ghost btn-sm" onClick={clearOv}>↺ Torna all'orario automatico</button>}
+      <Btn variant="primary" size="lg" block style={{marginTop:18}} onClick={onClose}>Fatto</Btn>
+    </div>
+  );
+}
+
 /* ---- staff shell + PIN gate ---- */
 function StaffArea({go, sub, setSub}){
   const [unlocked,setUnlocked]=useState(false); const [pin,setPin]=useState(''); const [shake,setShake]=useState(false);
@@ -247,6 +424,8 @@ function StaffArea({go, sub, setSub}){
         setShake(true); setTimeout(()=>{setShake(false);setPin('');},500); return;
       }
       window.ETG.staffPin=v;          // memorizzato per le operazioni staff (elimina, forma squadra)
+      // carica dal server lo stato aggiornato del torneo (calendario/risultati), anche se non pubblicato
+      if(window.ETG.Store.loadTournamentAsync){ try{ await window.ETG.Store.loadTournamentAsync(); }catch(e){} }
       setUnlocked(true);
     } finally { setLoading(false); }
   };
@@ -278,7 +457,7 @@ function StaffArea({go, sub, setSub}){
     );
   }
 
-  const tabs=[['regs','Iscrizioni'],['gironi','Gironi'],['tabellone','Tabellone'],['results','Risultati']];
+  const tabs=[['regs','Iscrizioni'],['gironi','Gironi'],['calendario','Calendario'],['tabellone','Tabellone'],['results','Risultati']];
   return (
     <div className="fadein">
       <div style={{background:'var(--ink)',color:'#fff',position:'sticky',top:53,zIndex:30}}>
@@ -297,6 +476,7 @@ function StaffArea({go, sub, setSub}){
       <div className="screen section">
         {sub==='regs' && <StaffRegs/>}
         {sub==='gironi' && <StaffGironi/>}
+        {sub==='calendario' && <StaffCalendario/>}
         {sub==='tabellone' && <StaffTabellone/>}
         {sub==='results' && <StaffResults/>}
       </div>
@@ -304,4 +484,4 @@ function StaffArea({go, sub, setSub}){
   );
 }
 
-Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, advanceBracket });
+Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, StaffCalendario, SchedEditSheet, SchedCell, advanceBracket });
