@@ -4,8 +4,10 @@ screenshots/
 uploads/
 dist/
 
-# Schema del database (già applicato su Supabase; non serve online)
-db/
+# Schema del database — script SQL da eseguire su Supabase (nel repo, così sono
+# accessibili a tutto lo staff). Eventuali file di lavoro locali in db/ restano esclusi.
+db/*
+!db/tournament.sql
 
 # Sistema
 .DS_Store
