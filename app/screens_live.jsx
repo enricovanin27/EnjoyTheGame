@@ -281,7 +281,12 @@ function LiveArea({go, sub, setSub}){
             {st.d2Exists && <>
               <div className="hr-soft"></div>
               <div className="eyebrow">Giornata 2 · mini gironi da 3 — passa la 1ª</div>
-              {['E','F','G','H'].map(g=><StandTable key={g} phase="group2" group={g} qualifies={1}/>)}
+              {['E','F','G','H'].map(g=>(
+                <div key={g} className="stack g8">
+                  <StandTable phase="group2" group={g} qualifies={1}/>
+                  <div className="stack g6">{window.ETG.helpers.groupSchedule(g,'group2').map(m=><MatchRow key={m.id} m={m}/>)}</div>
+                </div>
+              ))}
             </>}
           </div>
         ) : (drawn ? <NotPublishedYet what="Gironi"/> : <NotDrawnYet what="Gironi"/>))}

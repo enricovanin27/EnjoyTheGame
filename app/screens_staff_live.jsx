@@ -245,7 +245,7 @@ function SchedCell({m, onTap}){
     <button onClick={()=>onTap(m)} style={{all:'unset',cursor:'pointer',display:'block'}}>
       <div className="card" style={{padding:'8px 10px',borderColor:live?'var(--red)':'var(--line)'}}>
         <div className="tiny" style={{marginBottom:3,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span className="mono" style={{fontWeight:800,color:'var(--orange)'}}>Girone {m.group}</span>
+          <span className="mono" style={{fontWeight:800,color:'var(--orange)'}}>{window.ETG.helpers.matchLabel(m)}</span>
           {m.timeOverride ? <span className="mono" title="orario personalizzato" style={{color:'var(--teal)'}}>✎{m.time}</span>
             : done ? <span className="mono">{m.scoreA}:{m.scoreB}</span> : <Ic.pen style={{width:12,height:12,color:'var(--ink-3)'}}/>}
         </div>
@@ -256,14 +256,92 @@ function SchedCell({m, onTap}){
   );
 }
 
+/* card di configurazione orari di un blocco (g1/g2/brk) */
+function SchedConfigCard({block, title, note}){
+  useStore();
+  const [f,setF]=useState(()=>window.ETG.Store.scheduleConfig(block));
+  const apply=()=>window.ETG.Store.setScheduleConfig(block,{ start:f.start, slotMin:f.slotMin, breakAfter:f.breakAfter, breakMin:f.breakMin, breakLabel:f.breakLabel });
+  return (
+    <div className="card card-pad">
+      <div className="row g8" style={{marginBottom:12}}><Ic.clock style={{width:18,height:18,color:'var(--orange)'}}/><div style={{fontWeight:800}}>{title}</div></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <Field label="Inizio"><Text value={f.start} onChange={v=>setF({...f,start:v})} placeholder="18:00" inputMode="numeric"/></Field>
+        <Field label="Ogni (min)"><Text value={String(f.slotMin)} onChange={v=>setF({...f,slotMin:v})} inputMode="numeric"/></Field>
+        <Field label="Pausa dopo (turni)"><Text value={String(f.breakAfter)} onChange={v=>setF({...f,breakAfter:v})} inputMode="numeric"/></Field>
+        <Field label="Durata pausa (min)"><Text value={String(f.breakMin)} onChange={v=>setF({...f,breakMin:v})} inputMode="numeric"/></Field>
+      </div>
+      <Field label="Titolo pausa"><Text value={f.breakLabel} onChange={v=>setF({...f,breakLabel:v})} placeholder="Pausa"/></Field>
+      <Btn variant="primary" block onClick={apply}><Ic.check style={{width:16,height:16}}/> Applica orari</Btn>
+      {note && <div className="tiny" style={{marginTop:8,opacity:.75}}>{note}</div>}
+    </div>
+  );
+}
+
+/* vista generale a griglia (turni × 2 campi) di un blocco */
+function SchedGrid({grid, onTap}){
+  if(!grid.rows.length) return null;
+  return (
+    <div className="stack g8">
+      <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'center'}}>
+        <div></div>
+        <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 1</div>
+        <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 2</div>
+      </div>
+      {grid.rows.map(r=>(
+        <React.Fragment key={r.slot}>
+          {r.breakBefore && (
+            <div className="card" style={{padding:'9px 12px',background:'var(--teal)',color:'#fff',border:0,display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
+              <Ic.ball style={{width:16,height:16,color:'var(--sand)'}}/>
+              <span style={{fontWeight:800,fontSize:13}}>{grid.cfg.breakLabel||'Pausa'}</span>
+              <span className="tiny" style={{opacity:.85}}>· {grid.cfg.breakMin} min</span>
+            </div>
+          )}
+          <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'stretch'}}>
+            <div style={{textAlign:'center'}}>
+              <div className="mono" style={{fontWeight:800,fontSize:13}}>{r.time}</div>
+              <div className="tiny">T{r.slot+1}</div>
+            </div>
+            <SchedCell m={r.courts[0]} onTap={onTap}/>
+            <SchedCell m={r.courts[1]} onTap={onTap}/>
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* liste "girone per girone" (o fase per fase) di un blocco */
+function SchedGroupList({groups, phase, onTap}){
+  return (
+    <div className="stack g12">
+      {groups.map(g=>{
+        const list=window.ETG.helpers.groupSchedule(g, phase);
+        if(!list.length) return null;
+        return (
+          <div key={g} className="card" style={{overflow:'hidden'}}>
+            <div className="row between" style={{padding:'10px 13px 6px'}}><div className="h3">Girone {g}</div><span className="tiny mono">{list.length} partite</span></div>
+            <div className="stack g6" style={{padding:'0 10px 12px'}}>
+              {list.map(m=>(
+                <button key={m.id} onClick={()=>onTap(m)} style={{all:'unset',cursor:'pointer',display:'block'}}>
+                  <div className="card" style={{padding:'8px 11px',display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{width:44,flex:'0 0 auto',textAlign:'center'}}><div className="mono" style={{fontWeight:800,fontSize:13}}>{m.time}</div><div className="tiny">{m.court.replace('Campo','C.')}</div></div>
+                    <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)',fontWeight:400}}>vs</span> {window.ETG.teamName(m.bId)}</div>
+                    <Ic.pen style={{width:14,height:14,color:'var(--ink-3)'}}/>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function StaffCalendario(){
   const store=useStore(); const s=store.state;
   const st=window.ETG.Store.tournamentStatus();
   const [edit,setEdit]=useState(null);
-  const cfg=window.ETG.Store.scheduleConfig();
-  // form locale della configurazione
-  const [f,setF]=useState(cfg);
-  useEffect(()=>{ setF(window.ETG.Store.scheduleConfig()); },[st.drawn]);
 
   if(!st.drawn){
     return (
@@ -275,10 +353,10 @@ function StaffCalendario(){
     );
   }
 
-  const grid=window.ETG.helpers.groupGrid();
-  const slotOptions=grid.rows.map(r=>({v:String(r.slot), l:'Turno '+(r.slot+1)+' · '+r.time}));
-  const applyCfg=()=>{ window.ETG.Store.setScheduleConfig({ start:f.start, slotMin:f.slotMin, breakAfter:f.breakAfter, breakMin:f.breakMin, breakLabel:f.breakLabel }); };
   const published=window.ETG.Store.isPublished();
+  const g1=window.ETG.helpers.groupGrid();
+  const g2=window.ETG.helpers.day2Grid();
+  const brk=window.ETG.helpers.bracketGrid();
 
   return (
     <div className="stack g16">
@@ -298,102 +376,67 @@ function StaffCalendario(){
         </div>
       </div>
 
-      {/* configurazione orari */}
-      <div className="card card-pad">
-        <div className="row g8" style={{marginBottom:12}}><Ic.clock style={{width:18,height:18,color:'var(--orange)'}}/><div style={{fontWeight:800}}>Orari & pausa</div></div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <Field label="Inizio"><Text value={f.start} onChange={v=>setF({...f,start:v})} placeholder="18:00" inputMode="numeric"/></Field>
-          <Field label="Ogni (min)"><Text value={String(f.slotMin)} onChange={v=>setF({...f,slotMin:v})} inputMode="numeric"/></Field>
-          <Field label="Pausa dopo (turni)"><Text value={String(f.breakAfter)} onChange={v=>setF({...f,breakAfter:v})} inputMode="numeric"/></Field>
-          <Field label="Durata pausa (min)"><Text value={String(f.breakMin)} onChange={v=>setF({...f,breakMin:v})} inputMode="numeric"/></Field>
-        </div>
-        <Field label="Titolo pausa"><Text value={f.breakLabel} onChange={v=>setF({...f,breakLabel:v})} placeholder="Gara da 3 punti"/></Field>
-        <Btn variant="primary" block onClick={applyCfg}><Ic.check style={{width:16,height:16}}/> Applica orari</Btn>
-        <div className="tiny" style={{marginTop:8,opacity:.75}}>Ogni turno ha 2 partite in contemporanea (un mezzo campo ciascuna). La pausa serve alla gara da 3 punti.</div>
-      </div>
-
-      {/* vista generale: griglia turni × campi */}
-      <div className="eyebrow">Vista generale · {grid.rows.length} turni · 2 campi</div>
-      <div className="stack g8">
-        <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'center'}}>
-          <div></div>
-          <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 1</div>
-          <div className="tiny mono" style={{textAlign:'center',fontWeight:800}}>CAMPO 2</div>
-        </div>
-        {grid.rows.map(r=>(
-          <React.Fragment key={r.slot}>
-            {r.breakBefore && (
-              <div className="card" style={{padding:'9px 12px',background:'var(--teal)',color:'#fff',border:0,display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
-                <Ic.ball style={{width:16,height:16,color:'var(--sand)'}}/>
-                <span style={{fontWeight:800,fontSize:13}}>{grid.cfg.breakLabel||'Pausa'}</span>
-                <span className="tiny" style={{opacity:.85}}>· {grid.cfg.breakMin} min</span>
-              </div>
-            )}
-            <div style={{display:'grid',gridTemplateColumns:'52px 1fr 1fr',gap:8,alignItems:'stretch'}}>
-              <div style={{textAlign:'center'}}>
-                <div className="mono" style={{fontWeight:800,fontSize:13}}>{r.time}</div>
-                <div className="tiny">T{r.slot+1}</div>
-              </div>
-              <SchedCell m={r.courts[0]} onTap={setEdit}/>
-              <SchedCell m={r.courts[1]} onTap={setEdit}/>
-            </div>
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* vista girone per girone */}
-      <div className="hr-soft"></div>
+      {/* ===== GIORNATA 1 · GIRONI ===== */}
+      <div className="eyebrow">🏀 Giornata 1 · Gironi</div>
+      <SchedConfigCard block="g1" title="Orari & pausa — Giornata 1" note="Ogni turno ha 2 partite in contemporanea (un mezzo campo ciascuna). La pausa serve alla gara da 3 punti."/>
+      <div className="tiny mono" style={{opacity:.7}}>Vista generale · {g1.rows.length} turni · 2 campi</div>
+      <SchedGrid grid={g1} onTap={setEdit}/>
       <div className="eyebrow">Girone per girone</div>
-      <div className="stack g12">
-        {['A','B','C','D'].map(g=>{
-          const list=window.ETG.helpers.groupSchedule(g);
-          if(!list.length) return null;
-          return (
-            <div key={g} className="card" style={{overflow:'hidden'}}>
-              <div className="row between" style={{padding:'10px 13px 6px'}}><div className="h3">Girone {g}</div><span className="tiny mono">{list.length} partite</span></div>
-              <div className="stack g6" style={{padding:'0 10px 12px'}}>
-                {list.map(m=>(
-                  <button key={m.id} onClick={()=>setEdit(m)} style={{all:'unset',cursor:'pointer',display:'block'}}>
-                    <div className="card" style={{padding:'8px 11px',display:'flex',alignItems:'center',gap:10}}>
-                      <div style={{width:44,flex:'0 0 auto',textAlign:'center'}}><div className="mono" style={{fontWeight:800,fontSize:13}}>{m.time}</div><div className="tiny">{m.court.replace('Campo','C.')}</div></div>
-                      <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)',fontWeight:400}}>vs</span> {window.ETG.teamName(m.bId)}</div>
-                      <Ic.pen style={{width:14,height:14,color:'var(--ink-3)'}}/>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <SchedGroupList groups={['A','B','C','D']} phase="group1" onTap={setEdit}/>
+
+      {/* ===== GIORNATA 2 · MINI GIRONI ===== */}
+      {st.d2Exists && <>
+        <div className="hr-soft"></div>
+        <div className="eyebrow">🏀 Giornata 2 · Mini gironi</div>
+        <SchedConfigCard block="g2" title="Orari & pausa — Mini gironi" note="4 mini gironi (E–H) da 3 squadre, su 2 campi in contemporanea."/>
+        <div className="tiny mono" style={{opacity:.7}}>Vista generale · {g2.rows.length} turni · 2 campi</div>
+        <SchedGrid grid={g2} onTap={setEdit}/>
+        <div className="eyebrow">Girone per girone</div>
+        <SchedGroupList groups={['E','F','G','H']} phase="group2" onTap={setEdit}/>
+      </>}
+
+      {/* ===== GIORNATA 2 · TABELLONE ===== */}
+      {st.bracketExists && <>
+        <div className="hr-soft"></div>
+        <div className="eyebrow">🏆 Giornata 2 · Tabellone</div>
+        <SchedConfigCard block="brk" title="Orari — Tabellone" note="Quarti e semifinali sui 2 campi in contemporanea, finale su Campo 1. Puoi comunque spostarle a piacere."/>
+        <div className="tiny mono" style={{opacity:.7}}>Vista generale · {brk.rows.length} turni</div>
+        <SchedGrid grid={brk} onTap={setEdit}/>
+      </>}
+
+      {(!st.d2Exists || !st.bracketExists) && (
+        <div className="notice">Gli orari di {(!st.d2Exists)&&<b>mini gironi</b>}{(!st.d2Exists&&!st.bracketExists)?' e ':''}{(!st.bracketExists)&&<b>tabellone</b>} compariranno qui quando li generi (schede Gironi / Tabellone) e potrai modificarli.</div>
+      )}
 
       {/* sheet: sposta / modifica orario di una partita */}
       <Sheet open={!!edit} onClose={()=>setEdit(null)}>
-        {edit && <SchedEditSheet match={s.matches.find(x=>x.id===edit.id)||edit} slotOptions={slotOptions} onClose={()=>setEdit(null)}/>}
+        {edit && <SchedEditSheet match={s.matches.find(x=>x.id===edit.id)||edit} onClose={()=>setEdit(null)}/>}
       </Sheet>
     </div>
   );
 }
 
 /* editor di una singola partita del programma (sposta turno/campo, orario forzato) */
-function SchedEditSheet({match, slotOptions, onClose}){
+function SchedEditSheet({match, onClose}){
   useStore(); // ri-render sui cambi
   const m=window.ETG.Store.matchById(match.id)||match;
   const [ov,setOv]=useState(m.timeOverride||'');
+  const fld=(m.phase==='group1'||m.phase==='group2')?'slot':'tslot'; // il tabellone usa tslot (slot = accoppiamento)
+  const slotOptions=window.ETG.helpers.slotOptionsFor(m.phase);
   const move=(slot,court)=>window.ETG.Store.moveMatch(m.id,slot,court);
   const applyOv=()=>{ const r=window.ETG.Store.setMatchTimeOverride(m.id,ov); if(!r.ok&&r.reason==='format') alert('Formato orario non valido. Usa HH:MM (es. 20:15).'); };
   const clearOv=()=>{ setOv(''); window.ETG.Store.setMatchTimeOverride(m.id,''); };
   return (
     <div style={{padding:'4px 18px 26px'}}>
-      <div className="h3" style={{marginBottom:2}}>Girone {m.group}</div>
+      <div className="h3" style={{marginBottom:2}}>{window.ETG.helpers.matchLabel(m)}</div>
       <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>{window.ETG.teamName(m.aId)} <span style={{color:'var(--ink-3)',fontWeight:400}}>vs</span> {window.ETG.teamName(m.bId)}</div>
       <div className="tiny" style={{marginBottom:16}}>{m.day} · attualmente ore <b>{m.time}</b> · {m.court}</div>
 
       <Field label="Mezzo campo">
-        <Seg value={m.court==='Campo 2'?2:1} onChange={c=>move(m.slot,c)} options={[{v:1,l:'Campo 1'},{v:2,l:'Campo 2'}]}/>
+        <Seg value={m.court==='Campo 2'?2:1} onChange={c=>move(m[fld],c)} options={[{v:1,l:'Campo 1'},{v:2,l:'Campo 2'}]}/>
       </Field>
       <Field label="Sposta al turno" hint="Se il turno scelto è già occupato su questo campo, le due partite si scambiano.">
-        <Select value={String(m.slot)} onChange={v=>move(v,m.court==='Campo 2'?2:1)} options={slotOptions}/>
+        <Select value={String(m[fld])} onChange={v=>move(v,m.court==='Campo 2'?2:1)} options={slotOptions}/>
       </Field>
       <div className="hr-soft"></div>
       <Field label="Orario personalizzato" hint="Forza un orario diverso solo per questa partita (formato HH:MM).">
@@ -484,4 +527,4 @@ function StaffArea({go, sub, setSub}){
   );
 }
 
-Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, StaffCalendario, SchedEditSheet, SchedCell, advanceBracket });
+Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, StaffCalendario, SchedEditSheet, SchedCell, SchedConfigCard, SchedGrid, SchedGroupList, advanceBracket });

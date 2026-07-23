@@ -2,13 +2,23 @@
 (function(){
   const VER = 'etg_v5_2026_2';
 
-  /* ---------- programma gironi (orari, campi, pausa) ----------
-     Configurazione modificabile SOLO dallo staff. Gli orari delle partite dei
-     gironi vengono calcolati da questi parametri: si parte da `start`, ogni
-     `slotMin` minuti c'è un nuovo turno (2 partite in contemporanea, una per
-     ciascuna metà campo), e dopo `breakAfter` turni si inserisce una pausa di
-     `breakMin` minuti (per la gara da 3 punti). */
-  const SCHED_DEFAULT = { start:'18:00', slotMin:20, breakAfter:6, breakMin:40, breakLabel:'Gara da 3 punti 🏀' };
+  /* ---------- programma (orari, campi, pausa) — 3 blocchi ----------
+     Configurazione modificabile SOLO dallo staff. Gli orari delle partite si
+     calcolano dai parametri di ciascun blocco: si parte da `start`, ogni
+     `slotMin` minuti un nuovo turno (2 partite in contemporanea, una per mezzo
+     campo), e dopo `breakAfter` turni una pausa di `breakMin` minuti.
+       • g1  = Giornata 1, gironi da 4
+       • g2  = Giornata 2, mini gironi da 3
+       • brk = Giornata 2, tabellone (quarti/semifinali/finale) */
+  const SCHED_DEFAULTS = {
+    g1: { start:'18:00', slotMin:20, breakAfter:6, breakMin:40, breakLabel:'Gara da 3 punti 🏀' },
+    g2: { start:'09:30', slotMin:20, breakAfter:0, breakMin:0,  breakLabel:'Pausa' },
+    brk:{ start:'14:00', slotMin:30, breakAfter:0, breakMin:0,  breakLabel:'Pausa' },
+  };
+  // a quale blocco appartiene una fase, e quale campo "indice turno" usa
+  function blockOf(phase){ return phase==='group1'?'g1' : phase==='group2'?'g2' : 'brk'; }
+  function slotField(phase){ return (phase==='group1'||phase==='group2') ? 'slot' : 'tslot'; }
+  function phasesOf(block){ return block==='g1'?['group1'] : block==='g2'?['group2'] : ['quarti','semi','finale']; }
   function pad2(n){ return (n<10?'0':'')+n; }
   function hmToMin(hm){ const p=(hm||'0:0').split(':'); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
   function minToHm(t){ t=((Math.round(t)%1440)+1440)%1440; return pad2(Math.floor(t/60))+':'+pad2(t%60); }
@@ -73,7 +83,7 @@
     meta:{ edition:'IV', dates:'25–26 Luglio 2026', place:'Campetto Oratorio di Paese (TV)' },
     d1win:D1_WIN, d2win:D2_WIN, d2groups:D2groups,
     live,
-    schedule:Object.assign({},SCHED_DEFAULT), // programma gironi (orari/pausa) — modificabile dallo staff
+    schedule:{ g1:Object.assign({},SCHED_DEFAULTS.g1), g2:Object.assign({},SCHED_DEFAULTS.g2), brk:Object.assign({},SCHED_DEFAULTS.brk) }, // programma (orari/pausa) — modificabile dallo staff
     published:false, // il calendario è pubblico? Lo staff lo pubblica quando è pronto.
     registrations:demoRegs, // iscrizioni inviate dai giocatori
   };
@@ -91,19 +101,32 @@
   const subs=new Set();
   function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){} subs.forEach(f=>f()); }
 
-  /* ---------- programma gironi: config + calcolo orari ---------- */
-  function schedCfg(){ return Object.assign({}, SCHED_DEFAULT, state.schedule||{}); }
+  /* ---------- programma: config a blocchi + calcolo orari ---------- */
+  // restituisce tutti e 3 i blocchi con i default applicati, migrando l'eventuale
+  // vecchio formato "piatto" (una sola config, che era la Giornata 1)
+  function schedAll(){
+    let s = state.schedule || {};
+    if(s && s.start && !s.g1) s = { g1:s };   // migrazione dal formato precedente
+    return {
+      g1: Object.assign({}, SCHED_DEFAULTS.g1, s.g1||{}),
+      g2: Object.assign({}, SCHED_DEFAULTS.g2, s.g2||{}),
+      brk:Object.assign({}, SCHED_DEFAULTS.brk, s.brk||{}),
+    };
+  }
+  function schedCfg(block){ return schedAll()[block||'g1']; }
   /* orario (HH:MM) di un turno, tenendo conto della pausa a metà */
-  function slotTime(idx, cfg){ cfg=cfg||schedCfg();
+  function slotTime(idx, cfg){ cfg=cfg||schedCfg('g1');
     const extra = (cfg.breakAfter>0 && idx>=cfg.breakAfter) ? cfg.breakMin : 0;
     return minToHm(hmToMin(cfg.start) + idx*cfg.slotMin + extra); }
-  /* ricalcola l'orario di tutte le partite dei gironi dai loro turni (slot),
-     rispettando eventuali orari forzati a mano (timeOverride) */
+  /* ricalcola l'orario di TUTTE le partite programmate (gironi, mini gironi,
+     tabellone) dai rispettivi turni, rispettando gli orari forzati (timeOverride) */
   function reflowSchedule(){
-    const cfg=schedCfg();
-    state.matches.forEach(m=>{ if(m.phase==='group1' && m.slot!=null){
-      m.time = m.timeOverride || slotTime(m.slot, cfg);
-    }});
+    const A=schedAll();
+    state.matches.forEach(m=>{
+      const blk=blockOf(m.phase), fld=slotField(m.phase), idx=m[fld];
+      if(idx==null) return;
+      m.time = m.timeOverride || slotTime(idx, A[blk]);
+    });
   }
 
   /* ---------- access codes for team registrations ---------- */
@@ -259,17 +282,23 @@
       const pick=(g,pos)=>{ const a=standings('group1',g); return a[pos]?a[pos].teamId:null; };
       const formula={ E:[['A',1],['C',3],['D',2]], F:[['B',1],['D',3],['A',2]],
                       G:[['C',1],['A',3],['B',2]], H:[['D',1],['B',3],['C',2]] };
-      const D2_TIMES=['09:30','10:15','11:00'];
+      /* Mini gironi da 3 = 3 partite ciascuno (una squadra riposa a turno).
+         I 4 gironi (E,F,G,H) sono intervallati su 2 campi: slot = round*2 + (gi%2),
+         campo = E,F→1 / G,H→2 → in ogni turno giocano 2 gironi diversi in
+         contemporanea. Orari calcolati dal blocco g2 (config staff). */
+      const cfg=schedCfg('g2');
       state.matches=state.matches.filter(m=>m.phase!=='group2');
       const d2groups={};
       Object.keys(formula).forEach((g,gi)=>{
         const ids=formula[g].map(([grp,pos])=>pick(grp,pos)).filter(Boolean);
         d2groups[g]=ids;
-        rr3(ids).forEach((pair,ri)=>{
-          state.matches.push(mk({phase:'group2',group:g,day:'DOM 26 LUG',time:D2_TIMES[ri],court:'Campo '+(gi<2?1:2),aId:pair[0],bId:pair[1]}));
+        rr3(ids).forEach((pair,r)=>{
+          const slot=r*2 + (gi%2);
+          state.matches.push(mk({phase:'group2',group:g,day:'DOM 26 LUG',slot,court:'Campo '+(Math.floor(gi/2)+1),
+            time:slotTime(slot,cfg),aId:pair[0],bId:pair[1]}));
         });
       });
-      state.d2groups=d2groups; save(); return {ok:true};
+      state.d2groups=d2groups; reflowSchedule(); save(); return {ok:true};
     },
     /* TABELLONE — quarti con 4 vincitrici G1 + 4 vincitrici G2.
        Abbinamenti: 1A-1H, 1B-1G, 1C-1F, 1D-1E */
@@ -282,40 +311,49 @@
       const w2=(g)=>{ const a=standings('group2',g); return a[0]&&a[0].teamId; };
       const QF=[[w1('A'),w2('H')],[w1('B'),w2('G')],[w1('C'),w2('F')],[w1('D'),w2('E')]];
       state.matches=state.matches.filter(m=>!['quarti','semi','finale'].includes(m.phase));
-      const QF_TIMES=['14:00','14:40','15:20','16:00'];
-      QF.forEach((q,i)=>state.matches.push(mk({phase:'quarti',slot:i,day:'DOM 26 LUG',time:QF_TIMES[i],court:'Campo 1',aId:q[0],bId:q[1]})));
-      state.matches.push(mk({phase:'semi',slot:0,day:'DOM 26 LUG',time:'17:00',court:'Campo 1',aId:null,bId:null}));
-      state.matches.push(mk({phase:'semi',slot:1,day:'DOM 26 LUG',time:'17:40',court:'Campo 1',aId:null,bId:null}));
-      state.matches.push(mk({phase:'finale',slot:0,day:'DOM 26 LUG',time:'18:30',court:'Campo 1',aId:null,bId:null}));
+      /* Tabellone: `slot` = indice accoppiamento (serve all'avanzamento vincitrici),
+         `tslot` = turno orario. Orari dal blocco brk (config staff).
+         Turno 0: quarti Q1 (campo1) + Q2 (campo2)
+         Turno 1: quarti Q3 (campo1) + Q4 (campo2)
+         Turno 2: semifinali SF1 (campo1) + SF2 (campo2)
+         Turno 3: finale (campo1) */
+      const cfg=schedCfg('brk');
+      QF.forEach((q,i)=>{ const tslot=Math.floor(i/2);
+        state.matches.push(mk({phase:'quarti',slot:i,tslot,court:'Campo '+((i%2)+1),day:'DOM 26 LUG',time:slotTime(tslot,cfg),aId:q[0],bId:q[1]})); });
+      [0,1].forEach(i=>state.matches.push(mk({phase:'semi',slot:i,tslot:2,court:'Campo '+(i+1),day:'DOM 26 LUG',time:slotTime(2,cfg),aId:null,bId:null})));
+      state.matches.push(mk({phase:'finale',slot:0,tslot:3,court:'Campo 1',day:'DOM 26 LUG',time:slotTime(3,cfg),aId:null,bId:null}));
       state.d1win={A:w1('A'),B:w1('B'),C:w1('C'),D:w1('D')};
       state.d2win={E:w2('E'),F:w2('F'),G:w2('G'),H:w2('H')};
-      save(); return {ok:true};
+      reflowSchedule(); save(); return {ok:true};
     },
     // matches
     matchById(id){ return state.matches.find(m=>m.id===id); },
     setScore(id,a,b){ const m=state.matchById?state.matchById(id):state.matches.find(x=>x.id===id); if(m){m.scoreA=a;m.scoreB=b;} save(); },
 
     /* ============ PROGRAMMA GIRONI (solo staff) ============ */
-    /* configurazione corrente (con i default applicati) */
-    scheduleConfig(){ return schedCfg(); },
-    /* modifica orario d'inizio / durata turno / pausa e ricalcola tutti gli orari */
-    setScheduleConfig(patch){
-      const cur=schedCfg();
+    /* configurazione di un blocco (g1 = gironi, g2 = mini gironi, brk = tabellone) */
+    scheduleConfig(block){ return schedCfg(block||'g1'); },
+    /* modifica orari/pausa di un blocco e ricalcola tutti gli orari */
+    setScheduleConfig(block, patch){
+      if(patch===undefined){ patch=block; block='g1'; }   // retro-compatibilità
+      const all=schedAll(); const cur=all[block]||schedAll().g1;
       const next=Object.assign({}, cur, patch);
       next.slotMin=Math.max(5, parseInt(next.slotMin,10)||cur.slotMin);
       next.breakMin=Math.max(0, parseInt(next.breakMin,10)||0);
       next.breakAfter=Math.max(0, parseInt(next.breakAfter,10)||0);
       if(!/^\d{1,2}:\d{2}$/.test(next.start||'')) next.start=cur.start;
-      state.schedule=next; reflowSchedule(); save(); return {ok:true};
+      all[block]=next; state.schedule=all; reflowSchedule(); save(); return {ok:true};
     },
-    /* sposta una partita su un altro turno/campo; se la casella è occupata, scambia */
+    /* sposta una partita su un altro turno/campo (nello stesso blocco); se la
+       casella è occupata, scambia le due partite */
     moveMatch(id, targetSlot, targetCourt){
-      const m=state.matches.find(x=>x.id===id); if(!m||m.phase!=='group1') return {ok:false};
+      const m=state.matches.find(x=>x.id===id); if(!m) return {ok:false};
+      const blk=blockOf(m.phase), fld=slotField(m.phase);
       const court='Campo '+targetCourt; targetSlot=parseInt(targetSlot,10);
       if(isNaN(targetSlot)||targetSlot<0) return {ok:false};
-      const occ=state.matches.find(x=>x.phase==='group1'&&x.slot===targetSlot&&x.court===court&&x.id!==id);
-      if(occ){ occ.slot=m.slot; occ.court=m.court; }
-      m.slot=targetSlot; m.court=court;
+      const occ=state.matches.find(x=>x.id!==id && blockOf(x.phase)===blk && x[fld]===targetSlot && x.court===court);
+      if(occ){ occ[fld]=m[fld]; occ.court=m.court; }
+      m[fld]=targetSlot; m.court=court;
       reflowSchedule(); save(); return {ok:true};
     },
     /* forza un orario personalizzato su una singola partita (o annulla l'override) */
@@ -358,24 +396,45 @@
       schedule(){ return state.matches.slice().sort((a,b)=> (a.day<b.day?-1:a.day>b.day?1:0) || (a.time<b.time?-1:1)); },
       /* orario di un turno (per la UI staff) */
       slotTime,
-      /* VISTA GENERALE dei gironi: righe = turni, colonne = i 2 campi, con la
-         riga di pausa evidenziata a metà. */
-      groupGrid(){
-        const cfg=schedCfg();
-        const g1=state.matches.filter(m=>m.phase==='group1');
-        if(!g1.length) return {cfg, rows:[]};
-        const slots=[...new Set(g1.map(m=>m.slot))].sort((a,b)=>a-b);
+      blockOf, phasesOf,
+      /* VISTA GENERALE a griglia di un blocco: righe = turni, colonne = 2 campi,
+         con la riga di pausa evidenziata. block: 'g1' | 'g2' | 'brk'. */
+      phaseGrid(block){
+        block=block||'g1'; const cfg=schedCfg(block);
+        const phs=phasesOf(block), fld=(block==='brk')?'tslot':'slot';
+        const ms=state.matches.filter(m=>phs.includes(m.phase));
+        if(!ms.length) return {cfg, rows:[]};
+        const slots=[...new Set(ms.map(m=>m[fld]))].sort((a,b)=>a-b);
         const rows=slots.map(sl=>({
           slot:sl, time:slotTime(sl,cfg),
           breakBefore: cfg.breakAfter>0 && sl===cfg.breakAfter,
-          courts:[1,2].map(c=>g1.find(m=>m.slot===sl && m.court==='Campo '+c)||null),
+          courts:[1,2].map(c=>ms.find(m=>m[fld]===sl && m.court==='Campo '+c)||null),
         }));
         return {cfg, rows};
       },
-      /* VISTA GIRONE PER GIRONE: partite di un girone ordinate per turno */
-      groupSchedule(group){
-        return state.matches.filter(m=>m.phase==='group1'&&m.group===group)
-          .slice().sort((a,b)=> (a.slot-b.slot) || a.court.localeCompare(b.court));
+      /* comodità: griglie dei singoli blocchi */
+      groupGrid(){ return window.ETG.helpers.phaseGrid('g1'); },
+      day2Grid(){ return window.ETG.helpers.phaseGrid('g2'); },
+      bracketGrid(){ return window.ETG.helpers.phaseGrid('brk'); },
+      /* opzioni "turno" per l'editor, in base al blocco della partita */
+      slotOptionsFor(phase){
+        const g=window.ETG.helpers.phaseGrid(blockOf(phase));
+        return g.rows.map(r=>({v:String(r.slot), l:'Turno '+(r.slot+1)+' · '+r.time}));
+      },
+      /* etichetta breve di una partita (per griglie/liste) */
+      matchLabel(m){
+        if(!m) return '';
+        if(m.phase==='group1'||m.phase==='group2') return 'Girone '+m.group;
+        if(m.phase==='quarti') return 'Quarto '+((m.slot||0)+1);
+        if(m.phase==='semi') return 'Semifinale '+((m.slot||0)+1);
+        if(m.phase==='finale') return 'Finale';
+        return m.phase;
+      },
+      /* VISTA per raggruppamento: partite di un girone (o fase) ordinate per turno */
+      groupSchedule(group, phase){
+        phase=phase||'group1'; const fld=slotField(phase);
+        return state.matches.filter(m=>m.phase===phase&&m.group===group)
+          .slice().sort((a,b)=> (a[fld]-b[fld]) || a.court.localeCompare(b.court));
       },
     }
   };
