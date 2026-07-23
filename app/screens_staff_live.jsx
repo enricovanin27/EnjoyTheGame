@@ -171,12 +171,46 @@ function DrawPanel(){
   );
 }
 
+/* pannello password "organizzatori" per ri-sorteggio / annullamento sorteggio */
+function DrawGuardSheet({action, onClose}){
+  const [pwd,setPwd]=useState(''); const [busy,setBusy]=useState(false); const [err,setErr]=useState('');
+  const isCancel = action==='cancel';
+  const title = isCancel ? 'Annulla sorteggio' : 'Ri-sorteggia i gironi';
+  const warn = isCancel
+    ? 'Verranno eliminati gironi, calendario, mini gironi, tabellone e risultati. Le iscrizioni NON vengono toccate.'
+    : 'Le squadre verranno rimescolate in nuovi gironi e saranno azzerati calendario, mini gironi, tabellone e risultati.';
+  const run=async()=>{
+    setBusy(true); setErr('');
+    const res=await window.ETG.Store.verifyDrawPinAsync(pwd);
+    setBusy(false);
+    if(!res.ok){ setErr('Password errata. Riprova.'); setPwd(''); return; }
+    if(isCancel) window.ETG.Store.clearDraw();
+    else window.ETG.Store.drawGroups(window.ETG.Store.state.registrations.filter(r=>r.type==='team').length===16?undefined:TEST_TEAMS);
+    onClose();
+  };
+  return (
+    <div style={{padding:'4px 18px 26px'}}>
+      <div className="row g8" style={{marginBottom:8}}><Ic.lock style={{width:20,height:20,color:'var(--red)',flex:'0 0 auto'}}/><div className="h3">{title}</div></div>
+      <div className="notice" style={{marginTop:0,marginBottom:16}}>{warn}</div>
+      <Field label="Password organizzatori" hint="Richiesta solo per questa operazione (diversa dal PIN dello staff).">
+        <input className="control" type="password" value={pwd} autoFocus placeholder="••••••"
+          onChange={e=>setPwd(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter' && pwd && !busy) run(); }}/>
+      </Field>
+      {err && <div className="field-err" style={{marginTop:-6,marginBottom:10}}>{err}</div>}
+      <div className="stack g8" style={{marginTop:6}}>
+        <Btn variant="primary" size="lg" block disabled={!pwd||busy} onClick={run}>{busy?'Verifico…':(isCancel?'Conferma annullamento':'Conferma ri-sorteggio')}</Btn>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Annulla</button>
+      </div>
+    </div>
+  );
+}
+
 function StaffGironi(){
   const store=useStore(); const s=store.state;
+  const [guard,setGuard]=useState(null); // 'redraw' | 'cancel' → apre il pannello password
   const st=window.ETG.Store.tournamentStatus();
   if(!st.drawn) return <DrawPanel/>;
-  const reDraw=()=>{ if(confirm('Ri-sorteggiare i gironi? Verranno azzerati risultati, mini gironi e tabellone.')) window.ETG.Store.drawGroups(s.registrations.filter(r=>r.type==='team').length===16?undefined:TEST_TEAMS); };
-  const cancelDraw=()=>{ if(confirm('Annullare il sorteggio? Verranno eliminati gironi, calendario, mini gironi e tabellone. Le iscrizioni NON vengono toccate.')) window.ETG.Store.clearDraw(); };
   const genD2=()=>{ const r=window.ETG.Store.generateDay2(); if(!r.ok) alert(r.reason==='incomplete'?'Completa prima tutte le partite della Giornata 1.':'Sorteggia prima i gironi.'); };
   return (
     <div className="stack g16">
@@ -184,10 +218,13 @@ function StaffGironi(){
         <span style={{width:38,height:38,borderRadius:10,background:'rgba(30,138,91,.12)',display:'grid',placeItems:'center',flex:'0 0 auto'}}><Ic.check style={{width:18,height:18,color:'var(--ok,#1E8A5B)'}}/></span>
         <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:14}}>Gironi sorteggiati</div><div className="tiny">4 gironi da 4 · calendario Giornata 1 pronto</div></div>
         <div className="row g6" style={{flex:'0 0 auto'}}>
-          <button className="btn btn-ghost btn-sm" onClick={reDraw}>Ri-sorteggia</button>
-          <button className="btn btn-ghost btn-sm" style={{color:'var(--red)'}} onClick={cancelDraw}>Annulla sorteggio</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setGuard('redraw')}><Ic.lock style={{width:12,height:12}}/> Ri-sorteggia</button>
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--red)'}} onClick={()=>setGuard('cancel')}><Ic.lock style={{width:12,height:12}}/> Annulla sorteggio</button>
         </div>
       </div>
+      <Sheet open={!!guard} onClose={()=>setGuard(null)}>
+        {guard && <DrawGuardSheet action={guard} onClose={()=>setGuard(null)}/>}
+      </Sheet>
       <div className="eyebrow">Giornata 1 · gironi da 4 — passa la 1ª ai quarti</div>
       {['A','B','C','D'].map(g=><StandTable key={g} phase="group1" group={g} qualifies={1}/>)}
 
@@ -527,4 +564,4 @@ function StaffArea({go, sub, setSub}){
   );
 }
 
-Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, StaffCalendario, SchedEditSheet, SchedCell, SchedConfigCard, SchedGrid, SchedGroupList, advanceBracket });
+Object.assign(window,{ StaffArea, StaffLive, StaffResults, StaffGironi, StaffTabellone, StaffCalendario, SchedEditSheet, SchedCell, SchedConfigCard, SchedGrid, SchedGroupList, DrawGuardSheet, advanceBracket });

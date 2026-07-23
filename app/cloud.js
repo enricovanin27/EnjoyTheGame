@@ -163,6 +163,17 @@
     return { ok: !!reg, reg: reg };
   };
 
+  // STAFF: verifica la password "organizzatori" del sorteggio (ri-sorteggio / annullamento).
+  // Se la protezione non è configurata sul server, NON blocca (comportamento come prima).
+  Store.verifyDrawPinAsync = async function(pin){
+    if(!enabled) return { ok:true, demo:true };   // demo locale: nessun server da interrogare
+    try{
+      var r = await client.rpc('draw_pin_ok', { p_pin:String(pin||'') });
+      if(r.error){ console.warn('[cloud] draw_pin_ok', r.error.message); return { ok:true, unconfigured:true }; }
+      return { ok: r.data === true };
+    }catch(e){ console.warn('[cloud] draw_pin_ok', e && e.message); return { ok:true, unconfigured:true }; }
+  };
+
   /* ============================================================
      SINCRONIZZAZIONE TORNEO (calendario, risultati, tabellone, live)
      Lo staff (con PIN) SCRIVE; tutti gli altri LEGGONO in tempo reale.
